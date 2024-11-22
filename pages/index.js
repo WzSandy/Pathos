@@ -1,115 +1,176 @@
-import Image from "next/image";
-import localFont from "next/font/local";
-
-const geistSans = localFont({
-  src: "./fonts/GeistVF.woff",
-  variable: "--font-geist-sans",
-  weight: "100 900",
-});
-const geistMono = localFont({
-  src: "./fonts/GeistMonoVF.woff",
-  variable: "--font-geist-mono",
-  weight: "100 900",
-});
+import { useState } from 'react';
+import Map from '../components/Map';
 
 export default function Home() {
-  return (
-    <div
-      className={`${geistSans.variable} ${geistMono.variable} grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]`}
-    >
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              pages/index.js
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+  const [searchInput, setSearchInput] = useState('');
+  const [location, setLocation] = useState(null);
+  const [songData, setSongData] = useState(null);
+  const [trailData, setTrailData] = useState(null);
+  const [waypoints, setWaypoints] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+  // Get user's location when component mounts
+  const getUserLocation = () => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setLocation({
+            lat: position.coords.latitude,
+            lng: position.coords.longitude
+          });
+          setError(null);
+        },
+        (error) => {
+          setError("Error getting location: " + error.message);
+          console.error("Error getting location:", error);
+        }
+      );
+    } else {
+      setError("Geolocation is not supported by your browser");
+    }
+  };
+
+  // Handle song search and trail generation
+  const generateTrail = async () => {
+    if (!location || !searchInput) {
+      setError("Please provide both location and song information");
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      // 1. Search for song and get audio features
+      const spotifyRes = await fetch('/api/spotify/search', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ searchQuery: searchInput })
+      });
+      
+      if (!spotifyRes.ok) {
+        throw new Error('Failed to fetch song data');
+      }
+      
+      const songResult = await spotifyRes.json();
+      setSongData(songResult);
+
+      // 2. Generate trail based on audio features
+      const trailRes = await fetch('/api/generate-trail', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          audioFeatures: songResult.audioFeatures,
+          location: location
+        })
+      });
+
+      if (!trailRes.ok) {
+        throw new Error('Failed to generate trail');
+      }
+
+      const generatedTrail = await trailRes.json();
+      setTrailData(generatedTrail);
+      setWaypoints(generatedTrail.waypoints);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen p-8">
+      <h1 className="text-3xl font-bold mb-8">Pathos AI Trail Generator</h1>
+      
+      {/* Location and Search Section */}
+      <div className="space-y-6 mb-8">
+        <div className="flex flex-col gap-4 md:flex-row md:items-center">
+          <button 
+            onClick={getUserLocation}
+            className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition-colors"
+            disabled={loading}
           >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+            Get My Location
+          </button>
+          
+          <input
+            type="text"
+            placeholder="Enter song name and artist..."
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            className="flex-1 p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+          
+          <button
+            onClick={generateTrail}
+            className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 transition-colors"
+            disabled={loading || !location}
           >
-            Read our docs
-          </a>
+            {loading ? 'Generating...' : 'Generate Trail'}
+          </button>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+
+        {error && (
+          <div className="text-red-500 p-3 bg-red-50 rounded">
+            {error}
+          </div>
+        )}
+
+        {location && (
+          <div className="text-sm text-gray-600">
+            Located at: {location.lat.toFixed(4)}, {location.lng.toFixed(4)}
+          </div>
+        )}
+      </div>
+
+      {/* Trail Information */}
+      {trailData && (
+        <div className="bg-white p-4 rounded-lg shadow mb-6">
+          <h3 className="font-semibold text-lg mb-2">Generated Trail</h3>
+          <div className="space-y-2 text-sm text-gray-600">
+            <p>{trailData.description}</p>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-3">
+              <div>
+                <span className="font-medium">Distance:</span>{' '}
+                {trailData.recommendedDistance} km
+              </div>
+              <div>
+                <span className="font-medium">Duration:</span>{' '}
+                {trailData.estimatedDuration} minutes
+              </div>
+              <div>
+                <span className="font-medium">Pace:</span>{' '}
+                {trailData.recommendedPace} km/h
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Song Information */}
+      {songData && (
+        <div className="bg-white p-4 rounded-lg shadow mb-6">
+          <h3 className="font-semibold text-lg mb-2">Selected Song</h3>
+          <div className="space-y-2 text-sm text-gray-600">
+            <p>
+              <span className="font-medium">Track:</span> {songData.track.name}
+            </p>
+            <p>
+              <span className="font-medium">Artist:</span>{' '}
+              {songData.track.artists[0].name}
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Map Section */}
+      {location && (
+        <div className="w-full max-w-4xl mx-auto">
+          <Map center={location} waypoints={waypoints} />
+        </div>
+      )}
     </div>
   );
 }
