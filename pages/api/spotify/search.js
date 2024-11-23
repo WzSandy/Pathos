@@ -7,9 +7,13 @@ export default async function handler(req, res) {
 
   const { searchQuery } = req.body;
 
+  if (!searchQuery) {
+    return res.status(400).json({ error: 'Search query is required' });
+  }
+
   try {
-    // First, get access token
-    const tokenResponse = await axios.post('https://accounts.spotify.com/api/token', 
+    // Get access token
+    const tokenResponse = await axios.post('https://accounts.spotify.com/api/token',
       new URLSearchParams({
         'grant_type': 'client_credentials'
       }), {
@@ -23,7 +27,7 @@ export default async function handler(req, res) {
 
     const accessToken = tokenResponse.data.access_token;
 
-    // Then search for the track
+    // Search for track
     const searchResponse = await axios.get(
       `https://api.spotify.com/v1/search?q=${encodeURIComponent(searchQuery)}&type=track&limit=1`,
       {
@@ -38,8 +42,8 @@ export default async function handler(req, res) {
     }
 
     const track = searchResponse.data.tracks.items[0];
-    
-    // Get audio features for the track
+
+    // Get audio features
     const featuresResponse = await axios.get(
       `https://api.spotify.com/v1/audio-features/${track.id}`,
       {
@@ -49,12 +53,23 @@ export default async function handler(req, res) {
       }
     );
 
+    // Add some interpretation of the audio features
+    const audioFeatures = {
+      ...featuresResponse.data,
+      moodDescription: featuresResponse.data.valence > 0.5 ? 'positive' : 'contemplative',
+      intensityLevel: Math.round(featuresResponse.data.energy * 10),
+      suggestedPace: (featuresResponse.data.tempo / 60).toFixed(1) // Convert BPM to km/h
+    };
+
     res.status(200).json({
-      track: track,
-      audioFeatures: featuresResponse.data
+      track,
+      audioFeatures
     });
   } catch (error) {
-    console.error('Error:', error);
-    res.status(500).json({ error: 'Failed to fetch song data' });
+    console.error('Error:', error.response?.data || error.message);
+    res.status(500).json({ 
+      error: 'Failed to fetch song data',
+      details: error.response?.data || error.message 
+    });
   }
 }

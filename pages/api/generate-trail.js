@@ -1,3 +1,4 @@
+// pages/api/generate-trail.js
 import OpenAI from 'openai';
 
 const openai = new OpenAI({
@@ -13,7 +14,7 @@ export default async function handler(req, res) {
 
   try {
     const completion = await openai.chat.completions.create({
-      model: "gpt-4",
+      model: "gpt-3.5-turbo",
       messages: [
         {
           role: "system",
@@ -25,24 +26,60 @@ export default async function handler(req, res) {
             Tempo: ${audioFeatures.tempo}
             Energy: ${audioFeatures.energy}
             Valence: ${audioFeatures.valence}
-            Key: ${audioFeatures.key}
-            Mode: ${audioFeatures.mode}
             
             Starting from coordinates: ${location.lat}, ${location.lng}
             
-            Provide the response as a JSON object with these properties:
-            - description: A textual description of the trail
-            - recommendedDistance: Distance in kilometers
-            - estimatedDuration: Duration in minutes
-            - recommendedPace: Walking pace in km/h
-            - waypoints: Array of coordinate pairs [lat, lng] for the route`
+            Respond with a JSON object containing:
+            {
+              "description": "A brief description of the trail atmosphere",
+              "recommendedDistance": "A number in km (no units)",
+              "estimatedDuration": "A number in minutes (no units)",
+              "recommendedPace": "A number in km/h (no units)",
+              "waypoints": "An array of [lat, lng] pairs for a circular route"
+            }`
         }
-      ]
+      ],
+      temperature: 0.7,
+      response_format: { type: "json_object" }
     });
 
-    res.status(200).json(JSON.parse(completion.choices[0].message.content));
+    const rawResponse = JSON.parse(completion.choices[0].message.content);
+    
+    // Generate waypoints if none provided
+    const waypoints = rawResponse.waypoints || generateWaypoints(location, parseFloat(rawResponse.recommendedDistance));
+
+    const formattedResponse = {
+      description: rawResponse.description,
+      recommendedDistance: parseFloat(rawResponse.recommendedDistance),
+      estimatedDuration: parseInt(rawResponse.estimatedDuration),
+      recommendedPace: parseFloat(rawResponse.recommendedPace),
+      waypoints: waypoints
+    };
+
+    res.status(200).json(formattedResponse);
   } catch (error) {
     console.error('Error:', error);
     res.status(500).json({ error: 'Failed to generate trail' });
   }
+}
+
+function generateWaypoints(center, distance = 2) {
+  const R = 6371; // Earth's radius in km
+  const points = [];
+  const numPoints = 6; // Number of points in the route
+
+  // Convert distance to degrees (approximate)
+  const radiusInDeg = (distance / (2 * Math.PI * R)) * 360;
+
+  for (let i = 0; i < numPoints; i++) {
+    const angle = (2 * Math.PI * i) / numPoints;
+    const lat = center.lat + (radiusInDeg * Math.cos(angle));
+    const lng = center.lng + (radiusInDeg * Math.sin(angle) / Math.cos(center.lat * Math.PI / 180));
+    points.push([lat, lng]);
+  }
+
+  // Add start/end point to close the loop
+  points.push([center.lat, center.lng]);
+
+  return points;
 }
