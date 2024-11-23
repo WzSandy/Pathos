@@ -9,125 +9,130 @@ export default function Map({ center, waypoints }) {
   const mapInstanceRef = useRef(null);
   const directionsRendererRef = useRef(null);
   const [status, setStatus] = useState('initializing');
-
-  // Debug logs
-  console.log('Map Component Received:', { center, waypoints });
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    if (!center) return;
-    console.log('Initializing map with center:', center);
+    if (!center) {
+      setError('No location coordinates available');
+      return;
+    }
 
-    const loader = new Loader({
-      apiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY,
-      version: "weekly",
-      libraries: ["places"]
-    });
+    if (!process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY) {
+      setError('Maps API configuration error');
+      return;
+    }
 
-    let isMounted = true;
+    // Create script tag for Google Maps
+    const loadGoogleMapsScript = () => {
+      const script = document.createElement('script');
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}&libraries=places,directions&v=weekly`;
+      script.async = true;
+      script.defer = true;
+      return new Promise((resolve, reject) => {
+        script.onload = resolve;
+        script.onerror = reject;
+        document.head.appendChild(script);
+      });
+    };
 
     const initializeMap = async () => {
       try {
         setStatus('loading');
-        console.log('Loading Google Maps...');
-        const google = await loader.load();
         
-        if (!isMounted || !mapRef.current) {
-          console.log('Component unmounted or ref missing');
-          return;
+        // Load Google Maps script if not already loaded
+        if (!window.google?.maps) {
+          await loadGoogleMapsScript();
         }
 
-        // Initialize map if not already initialized
-        if (!mapInstanceRef.current) {
-          console.log('Creating new map instance');
-          mapInstanceRef.current = new google.maps.Map(mapRef.current, {
+        // Create map instance
+        if (!mapInstanceRef.current && mapRef.current) {
+          mapInstanceRef.current = new window.google.maps.Map(mapRef.current, {
             center,
             zoom: 14,
-            styles: [
-              {
-                featureType: 'landscape',
-                stylers: [{ color: '#f5f5f5' }]
-              },
-              {
-                featureType: 'water',
-                stylers: [{ color: '#86c5da' }]
-              }
-            ]
+            mapTypeId: 'roadmap',
+            fullscreenControl: true,
+            mapTypeControl: true,
+            streetViewControl: true,
+            zoomControl: true
+          });
+
+          // Add marker for current location
+          new window.google.maps.Marker({
+            position: center,
+            map: mapInstanceRef.current,
+            title: 'Your Location'
           });
         } else {
-          console.log('Updating existing map center');
-          mapInstanceRef.current.setCenter(center);
+          mapInstanceRef.current?.setCenter(center);
         }
 
-        // Clear previous directions
-        if (directionsRendererRef.current) {
-          directionsRendererRef.current.setMap(null);
-        }
-
-        // If we have waypoints, render the route
+        // Handle waypoints if they exist
         if (waypoints?.length >= 2) {
-          console.log('Processing waypoints:', waypoints);
-          const directionsService = new google.maps.DirectionsService();
-          directionsRendererRef.current = new google.maps.DirectionsRenderer({
-            map: mapInstanceRef.current,
-            suppressMarkers: false,
-            polylineOptions: {
-              strokeColor: '#FF0000',
-              strokeWeight: 4,
-              strokeOpacity: 0.8
-            }
+          // Clear previous directions
+          if (directionsRendererRef.current) {
+            directionsRendererRef.current.setMap(null);
+          }
+
+          const directionsService = new window.google.maps.DirectionsService();
+          directionsRendererRef.current = new window.google.maps.DirectionsRenderer({
+            map: mapInstanceRef.current
           });
 
-          const origin = { lat: waypoints[0][0], lng: waypoints[0][1] };
-          const destination = { 
-            lat: waypoints[waypoints.length - 1][0], 
-            lng: waypoints[waypoints.length - 1][1] 
-          };
-
-          const middleWaypoints = waypoints.slice(1, -1).map(point => ({
-            location: new google.maps.LatLng(point[0], point[1]),
-            stopover: true
-          }));
-
-          console.log('Requesting directions with waypoints');
           const request = {
-            origin,
-            destination,
-            waypoints: middleWaypoints,
-            travelMode: google.maps.TravelMode.WALKING,
+            origin: { lat: waypoints[0][0], lng: waypoints[0][1] },
+            destination: { 
+              lat: waypoints[waypoints.length - 1][0], 
+              lng: waypoints[waypoints.length - 1][1] 
+            },
+            waypoints: waypoints.slice(1, -1).map(point => ({
+              location: { lat: point[0], lng: point[1] },
+              stopover: true
+            })),
+            travelMode: 'WALKING',
             optimizeWaypoints: true
           };
 
           directionsService.route(request, (result, status) => {
-            if (status === "OK" && isMounted) {
-              console.log('Directions received successfully');
+            if (status === 'OK') {
               directionsRendererRef.current.setDirections(result);
               setStatus('ready');
             } else {
-              console.error('Directions failed:', status);
-              setStatus('error');
+              setError(`Failed to get directions: ${status}`);
             }
           });
         } else {
-          console.log('No waypoints provided, showing map only');
           setStatus('ready');
         }
-      } catch (error) {
-        console.error('Map initialization error:', error);
-        setStatus('error');
+      } catch (err) {
+        console.error('Map initialization error:', err);
+        setError(err.message);
       }
     };
 
     initializeMap();
 
     return () => {
-      isMounted = false;
+      if (directionsRendererRef.current) {
+        directionsRendererRef.current.setMap(null);
+      }
     };
   }, [center, waypoints]);
 
-  if (status === 'error') {
+  if (error) {
     return (
-      <div className="h-[500px] w-full flex items-center justify-center bg-red-50 text-red-500">
-        Error loading map
+      <div className="h-[500px] w-full flex flex-col items-center justify-center bg-red-50 text-red-500 p-4">
+        <p className="font-bold mb-2">Error loading map</p>
+        <p className="text-sm">{error}</p>
+        {process.env.NODE_ENV === 'development' && (
+          <pre className="mt-4 text-xs bg-white p-2 rounded overflow-auto max-w-full">
+            {JSON.stringify({
+              center,
+              waypointsCount: waypoints?.length,
+              apiKeyPresent: !!process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY,
+              status
+            }, null, 2)}
+          </pre>
+        )}
       </div>
     );
   }
@@ -135,7 +140,10 @@ export default function Map({ center, waypoints }) {
   if (status !== 'ready') {
     return (
       <div className="h-[500px] w-full flex items-center justify-center bg-gray-50">
-        Loading map...
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto"></div>
+          <p className="mt-2 text-gray-600">Loading map...</p>
+        </div>
       </div>
     );
   }
