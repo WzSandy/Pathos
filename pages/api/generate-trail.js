@@ -1,9 +1,26 @@
-// pages/api/generate-trail.js
 import OpenAI from 'openai';
+import axios from 'axios';
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY
 });
+
+async function getNearbyPlaces(center, radius = 1000) {
+  try {
+    const response = await axios.get(
+      `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${center.lat},${center.lng}&radius=${radius}&type=point_of_interest&key=${process.env.GOOGLE_MAPS_API_KEY}`
+    );
+    
+    return response.data.results.map(place => ({
+      name: place.name,
+      location: [place.geometry.location.lat, place.geometry.location.lng],
+      types: place.types
+    }));
+  } catch (error) {
+    console.error('Error fetching nearby places:', error);
+    return null;
+  }
+}
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -17,7 +34,10 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Safely access all required properties with defaults
+    // Get nearby places before generating the trail
+    const nearbyPlaces = await getNearbyPlaces(location);
+    
+    // Use existing defaults
     const moodAnalysis = audioFeatures?.moodAnalysis || {
       primaryMood: 'balanced',
       emotionalIntensity: 5,
@@ -50,45 +70,25 @@ export default async function handler(req, res) {
         {
           role: "system",
           content: `You are Pathos, an AI trail designer that crafts personalized walking experiences by 
-          translating musical characteristics into physical journeys. 
-          Your expertise lies in creating meaningful connections between musical elements and geographical features, 
-          ensuring each trail tells a story that resonates with the song's essence.
+          translating musical characteristics into physical journeys. Your expertise lies in creating meaningful 
+          connections between musical elements and geographical features, ensuring each trail tells a story that 
+          resonates with the song's essence.
 
           Key Responsibilities:
-          - Transform musical characteristics into physical trail features
-          - Create meaningful stopping points that reflect lyrical themes and musical moments
-          - Design routes that match the song's emotional journey
-          - Ensure safety and accessibility while maintaining artistic vision
-          
-          When designing trails, consider:
-          1. Musical Dynamics:
-          - Translate tempo into trail pacing and rhythm
-          - Use elevation changes to mirror musical crescendos and diminuendos
-          - Match terrain complexity with musical complexity
-          - Reflect key changes in directional changes or viewpoints
-          
-          2. Lyrical Integration:
-          - Incorporate locations mentioned in lyrics as waypoints
-          - Use natural features that appear in the lyrics
-          - Time recommendations based on daylight/nighttime references
-          - Consider weather and seasonal references for optimal experience
-          
-          3. Emotional Resonance:
-          - Match trail intensity with the song's emotional intensity
-          - Create contemplative spaces for introspective moments
-          - Design viewpoints that enhance the song's atmosphere
-          - Use terrain variety to reflect emotional variations
-          
-          4. Practical Considerations:
-          - Ensure trails are circular, returning to start point
-          - Keep routes within reasonable walking distance (2-10km)
-          - Include rest points at meaningful intervals
-          - Consider accessibility based on terrain complexity`  
+          - Create circular routes that start and end at the user's current location
+          - Select 3-5 waypoints from available nearby places that reflect the song's themes
+          - Ensure a logical walking sequence between points
+          - Match locations to musical and lyrical elements, as well as artist(s) context`
         },
         {
           role: "user",
-          content: `Create a walking trail that embodies these characteristics:
-        
+          content: `Create a walking trail using these available locations and characteristics:
+
+            STARTING LOCATION: [${location.lat}, ${location.lng}]
+            
+            AVAILABLE NEARBY PLACES:
+            ${JSON.stringify(nearbyPlaces, null, 2)}
+            
             MUSICAL ATMOSPHERE:
             - Primary Mood: ${moodAnalysis.primaryMood}
             - Emotional Intensity: ${moodAnalysis.emotionalIntensity}/10
@@ -111,32 +111,31 @@ export default async function handler(req, res) {
             - Time of Day: ${JSON.stringify(lyricsAnalysis.timeReferences)}
             - Weather/Seasons: ${JSON.stringify(lyricsAnalysis.weatherReferences)}
             
-            LOCATION:
-            - Starting Point: ${location.lat}, ${location.lng}
-            
-            Generate a trail that:
-            1. Matches the musical mood and rhythm
-            2. Incorporates locations and elements mentioned in lyrics
-            3. Considers time of day and weather references
-            4. Creates a cohesive experience
-            
-            Respond with a JSON object containing:
+            Create a circular route that starts and ends at the current location. Select 3-5 waypoints from the available places. 
+            When specifying metrics:
+            1. First determine the recommendedDistance (2-10 km) based on the song's length and intensity
+            2. Then choose a recommendedPace (3-6 km/h) based on the song's tempo and mood
+            3. The estimatedDuration will be calculated as (recommendedDistance / recommendedPace) * 60 minutes
+            Respond with JSON:
             {
               "description": "A detailed description connecting musical elements to the trail experience,
-              including how the trail design and waypoints reflect the song's characteristics and lyrics",
+              including how the trail reflects the song's theme and tonality, and how it connects to the artist's
+              background. Avoid repetitive and generic wording, reference actual location names and artist quotes
+              and maybe interviews",
               "technicalDetails": {
-                "recommendedDistance": "number in km", // A number between 2-10
-                "estimatedDuration": "number in minutes", // A number between 15-120
-                "recommendedPace": "number in km/h", // A number between 3-6
-                "terrainType": "description of terrain variations", 
-                "elevationChange": "suggested elevation change in meters" // A number between 0-100
+                "recommendedDistance": number,  // 2-10 km
+                "estimatedDuration": number,    // 15-120 minutes
+                "recommendedPace": number,      // 3-6 km/h
+                "terrainType": "string",
+                "elevationChange": number      // 0-100 meters
               },
-              "waypoints": "array of [lat, lng] pairs for a circular route",
+              "waypoints": "array of [lat, lng] pairs, starting and ending with the user's location",
               "highlights": [
                 {
                   "point": "[lat, lng]",
-                  "description": "point description",
-                  "musicalConnection": "how this point connects to the song"
+                  "name": "string",           // Name of the location
+                  "description": "string",    // Description of the place
+                  "musicalConnection": "string" // How this location connects to the song
                 }
               ]
             }`
@@ -148,16 +147,24 @@ export default async function handler(req, res) {
 
     const rawResponse = JSON.parse(completion.choices[0].message.content);
     
-    // Generate waypoints if none provided
-    const waypoints = rawResponse.waypoints || generateWaypoints(location, 
-      parseFloat(rawResponse.technicalDetails?.recommendedDistance || rawResponse.recommendedDistance || 2));
+    // Ensure the route starts and ends at the user's location
+    let waypoints = rawResponse.waypoints;
+    if (!waypoints || !Array.isArray(waypoints) || waypoints.length < 2) {
+      // Fall back to generated waypoints if needed
+      waypoints = generateWaypoints(location, 
+        parseFloat(rawResponse.technicalDetails?.recommendedDistance || 2));
+    } else {
+      // Force start and end points to be user's location
+      waypoints[0] = [location.lat, location.lng];
+      waypoints[waypoints.length - 1] = [location.lat, location.lng];
+    }
 
-    // Format response with more detail
+    // Keep your existing response format
     const formattedResponse = {
       description: rawResponse.description,
-      recommendedDistance: parseFloat(rawResponse.technicalDetails?.recommendedDistance || 2).toFixed(2), // Add this at top level
-      estimatedDuration: parseInt(rawResponse.technicalDetails?.estimatedDuration || 30), // Add this at top level
-      recommendedPace: parseFloat(rawResponse.technicalDetails?.recommendedPace || 4.0).toFixed(1), // Add this at top level
+      recommendedDistance: parseFloat(rawResponse.technicalDetails?.recommendedDistance || 2).toFixed(2),
+      estimatedDuration: parseInt(rawResponse.technicalDetails?.estimatedDuration || 30),
+      recommendedPace: parseFloat(rawResponse.technicalDetails?.recommendedPace || 4.0).toFixed(1),
       technicalDetails: rawResponse.technicalDetails || {
         recommendedDistance: parseFloat(rawResponse.recommendedDistance || 2),
         estimatedDuration: parseInt(rawResponse.estimatedDuration || 30),
@@ -180,17 +187,16 @@ export default async function handler(req, res) {
   }
 }
 
+// Keep your existing generateWaypoints function as fallback
 function generateWaypoints(center, distance = 2) {
-  const R = 6371; // Earth's radius in km
+  const R = 6371;
   const points = [];
-  const numPoints = 6; // Number of points in the route
+  const numPoints = 6;
 
-  // Add input validation
   if (!center?.lat || !center?.lng || isNaN(distance)) {
     throw new Error('Invalid center point or distance');
   }
 
-  // Convert distance to degrees (approximate)
   const radiusInDeg = (distance / (2 * Math.PI * R)) * 360;
 
   for (let i = 0; i < numPoints; i++) {
@@ -200,8 +206,9 @@ function generateWaypoints(center, distance = 2) {
     points.push([lat, lng]);
   }
 
-  // Add start/end point to close the loop
+  // Ensure the route starts and ends at the user's location
+  points[0] = [center.lat, center.lng];
   points.push([center.lat, center.lng]);
-
+  
   return points;
 }
