@@ -22,23 +22,36 @@ export default async function handler(req, res) {
         },
         {
           role: "user",
-          content: `Create a walking trail description based on these musical features:
-            Tempo: ${audioFeatures.tempo}
-            Energy: ${audioFeatures.energy}
-            Valence: ${audioFeatures.valence}
-            
-            Starting from coordinates: ${location.lat}, ${location.lng}
-            
-            Respond with a JSON object containing:
-            {
-              "description": "A brief description of the trail atmosphere",
-              "recommendedDistance": "A number in km (no units)",
-              "estimatedDuration": "A number in minutes (no units)",
-              "recommendedPace": "A number in km/h (no units)",
-              "waypoints": "An array of [lat, lng] pairs for a circular route"
-            }`
-        }
-      ],
+      content: `Create a walking trail description based on these musical features:
+        
+        Mood & Atmosphere:
+        - Primary Mood: ${audioFeatures.moodAnalysis.primaryMood}
+        - Emotional Intensity: ${audioFeatures.moodAnalysis.emotionalIntensity}/10
+        - Atmospheric Quality: ${audioFeatures.moodAnalysis.atmosphericQuality}
+        
+        Movement Characteristics:
+        - Intensity Level: ${audioFeatures.movementAnalysis.intensityLevel}/10
+        - Suggested Pace: ${audioFeatures.movementAnalysis.suggestedPace} km/h
+        - Rhythm Pattern: ${audioFeatures.movementAnalysis.rhythmPattern.complexity}/4 time, ${audioFeatures.movementAnalysis.rhythmPattern.consistency} rhythm
+        
+        Environmental Preferences:
+        - Trail Type: ${audioFeatures.environmentalPreferences.trailType}
+        - Terrain Complexity: ${audioFeatures.environmentalPreferences.terrainComplexity}/10
+        - Scenery Preference: ${audioFeatures.environmentalPreferences.sceneryPreference}
+        
+        Starting from coordinates: ${location.lat}, ${location.lng}
+        
+        Respond with a JSON object containing:
+        {
+          "description": "A detailed description of the trail atmosphere",
+          "recommendedDistance": "A number in km (no units)",
+          "estimatedDuration": "A number in minutes (no units)",
+          "recommendedPace": "A number in km/h (no units)",
+          "waypoints": "An array of [lat, lng] pairs for a circular route",
+          "highlights": "Array of key points along the route with descriptions"
+        }`
+    }
+  ],
       temperature: 0.7,
       response_format: { type: "json_object" }
     });

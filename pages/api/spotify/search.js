@@ -56,10 +56,68 @@ export default async function handler(req, res) {
     // Add some interpretation of the audio features
     const audioFeatures = {
       ...featuresResponse.data,
-      moodDescription: featuresResponse.data.valence > 0.5 ? 'positive' : 'contemplative',
-      intensityLevel: Math.round(featuresResponse.data.energy * 10),
-      suggestedPace: (featuresResponse.data.tempo / 60).toFixed(1) // Convert BPM to km/h
+      moodAnalysis: {
+        primaryMood: getMoodDescription(featuresResponse.data),
+        emotionalIntensity: Math.round(featuresResponse.data.valence * 10),
+        atmosphericQuality: getAtmosphericQuality(featuresResponse.data)
+      },
+      
+      // Enhanced movement analysis (incorporating your existing intensityLevel and suggestedPace)
+      movementAnalysis: {
+        intensityLevel: Math.round(featuresResponse.data.energy * 10), // Keep your existing intensity calculation
+        suggestedPace: calculatePace(featuresResponse.data), // Enhanced version of your existing pace calculation
+        rhythmPattern: {
+          complexity: featuresResponse.data.time_signature,
+          consistency: featuresResponse.data.danceability > 0.7 ? 'steady' : 'variable'
+        }
+      },
+      
+      // New environmental analysis
+      environmentalPreferences: {
+        trailType: determineTrailType(featuresResponse.data),
+        terrainComplexity: Math.round((featuresResponse.data.energy * 0.4 + 
+                                      featuresResponse.data.danceability * 0.3 + 
+                                      featuresResponse.data.valence * 0.3) * 10),
+        sceneryPreference: featuresResponse.data.acousticness > 0.7 ? 'nature' : 'urban'
+      }
     };
+    
+    // Helper functions (add these before your endpoint handler)
+    function getMoodDescription(features) {
+      const { valence, energy, mode } = features;
+      
+      if (valence > 0.8 && energy > 0.8) return 'euphoric';
+      if (valence > 0.6 && energy > 0.6) return 'uplifting';
+      if (valence > 0.5 && mode === 1) return 'positive';
+      if (valence < 0.3 && energy < 0.3) return 'introspective';
+      if (valence < 0.4 && mode === 0) return 'melancholic';
+      if (energy > 0.7 && valence < 0.5) return 'intense';
+      return 'balanced';
+    }
+    
+    function getAtmosphericQuality(features) {
+      const { instrumentalness, acousticness, energy } = features;
+      
+      if (instrumentalness > 0.7) return 'ethereal';
+      if (acousticness > 0.7) return 'organic';
+      if (energy > 0.7) return 'dynamic';
+      return 'balanced';
+    }
+    
+    function calculatePace(features) {
+      const basePace = features.tempo / 60; // Your existing BPM to km/h conversion
+      const energyAdjustment = (features.energy - 0.5) * 2; // Adjust pace based on energy
+      return Math.max(2, Math.min(8, basePace + energyAdjustment)).toFixed(1);
+    }
+    
+    function determineTrailType(features) {
+      const { energy, acousticness, instrumentalness } = features;
+      
+      if (acousticness > 0.7) return 'nature';
+      if (energy > 0.7) return 'urban';
+      if (instrumentalness > 0.7) return 'mixed';
+      return 'balanced';
+    }
 
     res.status(200).json({
       track,
