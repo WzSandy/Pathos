@@ -2,7 +2,6 @@
 import React from 'react';
 import { useEffect, useRef } from 'react';
 import { useState } from 'react';
-import { Loader } from '@googlemaps/js-api-loader';
 
 export default function Map({ center, waypoints }) {
   const mapRef = useRef(null);
@@ -10,6 +9,7 @@ export default function Map({ center, waypoints }) {
   const directionsRendererRef = useRef(null);
   const [status, setStatus] = useState('initializing');
   const [error, setError] = useState(null);
+  const [mapsLoaded, setMapsLoaded] = useState(false);
 
   useEffect(() => {
     if (!center) {
@@ -22,29 +22,29 @@ export default function Map({ center, waypoints }) {
       return;
     }
 
-    // Create script tag for Google Maps
-    const loadGoogleMapsScript = () => {
+    // Only load script if Google Maps isn't already loaded
+    if (!window.google?.maps && !mapsLoaded) {
       const script = document.createElement('script');
       script.src = `https://maps.googleapis.com/maps/api/js?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}&libraries=places,directions&v=weekly`;
       script.async = true;
       script.defer = true;
-      return new Promise((resolve, reject) => {
-        script.onload = resolve;
-        script.onerror = reject;
-        document.head.appendChild(script);
-      });
-    };
+      script.onload = () => {
+        setMapsLoaded(true);
+        initializeMap();
+      };
+      script.onerror = () => {
+        setError('Failed to load Google Maps');
+      };
+      document.head.appendChild(script);
+    } else {
+      initializeMap();
+    }
 
-    const initializeMap = async () => {
+    async function initializeMap() {
       try {
         setStatus('loading');
         
-        // Load Google Maps script if not already loaded
-        if (!window.google?.maps) {
-          await loadGoogleMapsScript();
-        }
-
-        // Create map instance
+        // Create or update map instance
         if (!mapInstanceRef.current && mapRef.current) {
           mapInstanceRef.current = new window.google.maps.Map(mapRef.current, {
             center,
@@ -55,16 +55,16 @@ export default function Map({ center, waypoints }) {
             streetViewControl: true,
             zoomControl: true
           });
-
-          // Add marker for current location
-          new window.google.maps.Marker({
-            position: center,
-            map: mapInstanceRef.current,
-            title: 'Your Location'
-          });
-        } else {
-          mapInstanceRef.current?.setCenter(center);
+        } else if (mapInstanceRef.current) {
+          mapInstanceRef.current.setCenter(center);
         }
+
+        // Clear any existing markers and add new marker for current location
+        const marker = new window.google.maps.Marker({
+          position: center,
+          map: mapInstanceRef.current,
+          title: 'Your Location'
+        });
 
         // Handle waypoints if they exist
         if (waypoints?.length >= 2) {
@@ -75,7 +75,8 @@ export default function Map({ center, waypoints }) {
 
           const directionsService = new window.google.maps.DirectionsService();
           directionsRendererRef.current = new window.google.maps.DirectionsRenderer({
-            map: mapInstanceRef.current
+            map: mapInstanceRef.current,
+            suppressMarkers: false
           });
 
           const request = {
@@ -97,6 +98,7 @@ export default function Map({ center, waypoints }) {
               directionsRendererRef.current.setDirections(result);
               setStatus('ready');
             } else {
+              console.error('Directions request failed:', status);
               setError(`Failed to get directions: ${status}`);
             }
           });
@@ -107,16 +109,15 @@ export default function Map({ center, waypoints }) {
         console.error('Map initialization error:', err);
         setError(err.message);
       }
-    };
+    }
 
-    initializeMap();
-
+    // Cleanup function
     return () => {
       if (directionsRendererRef.current) {
         directionsRendererRef.current.setMap(null);
       }
     };
-  }, [center, waypoints]);
+  }, [center, waypoints, mapsLoaded]);
 
   if (error) {
     return (
@@ -129,7 +130,8 @@ export default function Map({ center, waypoints }) {
               center,
               waypointsCount: waypoints?.length,
               apiKeyPresent: !!process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY,
-              status
+              status,
+              mapsLoaded
             }, null, 2)}
           </pre>
         )}
