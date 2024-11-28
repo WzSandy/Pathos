@@ -1,5 +1,6 @@
 import OpenAI from 'openai';
 import axios from 'axios';
+import { getWikiInformation } from '../../services/wikiService';
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY
@@ -11,11 +12,44 @@ async function getNearbyPlaces(center, radius = 1000) {
       `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${center.lat},${center.lng}&radius=${radius}&type=point_of_interest&key=${process.env.GOOGLE_MAPS_API_KEY}`
     );
     
-    return response.data.results.map(place => ({
-      name: place.name,
-      location: [place.geometry.location.lat, place.geometry.location.lng],
-      types: place.types
-    }));
+    // Get detailed information for each place
+    const placesWithDetails = await Promise.all(
+      response.data.results.map(async place => {
+        try {
+          // Get Google Places details
+          const detailsResponse = await axios.get(
+            `https://maps.googleapis.com/maps/api/place/details/json?place_id=${place.place_id}&fields=name,formatted_address,rating,reviews,editorial_summary,types,user_ratings_total,price_level,opening_hours,business_status&key=${process.env.GOOGLE_MAPS_API_KEY}`
+          );
+
+          // Get Wikipedia information
+          const wikiData = await getWikiInformation(place.name, place.vicinity);
+          
+          return {
+            name: place.name,
+            location: [place.geometry.location.lat, place.geometry.location.lng],
+            types: place.types,
+            details: detailsResponse.data.result,
+            wikiData: wikiData,
+            rating: place.rating,
+            user_ratings_total: place.user_ratings_total,
+            vicinity: place.vicinity
+          };
+        } catch (error) {
+          console.error(`Error fetching details for ${place.name}:`, error);
+          // Fallback to basic place information if detailed fetch fails
+          return {
+            name: place.name,
+            location: [place.geometry.location.lat, place.geometry.location.lng],
+            types: place.types,
+            rating: place.rating,
+            user_ratings_total: place.user_ratings_total,
+            vicinity: place.vicinity
+          };
+        }
+      })
+    );
+    
+    return placesWithDetails;
   } catch (error) {
     console.error('Error fetching nearby places:', error);
     return null;
@@ -111,7 +145,7 @@ export default async function handler(req, res) {
             - Time of Day: ${JSON.stringify(lyricsAnalysis.timeReferences)}
             - Weather/Seasons: ${JSON.stringify(lyricsAnalysis.weatherReferences)}
             
-            Create a circular route that starts and ends at the current location. Select 3-5 waypoints from the available places. 
+            Create a circular route that starts and ends at the current location. Select 3-5 waypoints from the available places.
             When specifying metrics:
             1. First determine the recommendedDistance (2-10 km) based on the song's length and intensity
             2. Then choose a recommendedPace (3-6 km/h) based on the song's tempo and mood
@@ -159,7 +193,24 @@ export default async function handler(req, res) {
       waypoints[waypoints.length - 1] = [location.lat, location.lng];
     }
 
-    // Keep your existing response format
+    // Add rich descriptions to highlights using wiki data
+    if (rawResponse.highlights) {
+      rawResponse.highlights = rawResponse.highlights.map(highlight => {
+        const matchingPlace = nearbyPlaces.find(place => 
+          Math.abs(place.location[0] - highlight.point[0]) < 0.0001 && 
+          Math.abs(place.location[1] - highlight.point[1]) < 0.0001
+        );
+
+        if (matchingPlace?.wikiData?.summary) {
+          return {
+            ...highlight,
+            description: matchingPlace.wikiData.summary
+          };
+        }
+        return highlight;
+      });
+    }
+
     const formattedResponse = {
       description: rawResponse.description,
       recommendedDistance: parseFloat(rawResponse.technicalDetails?.recommendedDistance || 2).toFixed(2),
@@ -187,7 +238,6 @@ export default async function handler(req, res) {
   }
 }
 
-// Keep your existing generateWaypoints function as fallback
 function generateWaypoints(center, distance = 2) {
   const R = 6371;
   const points = [];

@@ -6,7 +6,6 @@ export default function Home() {
   const [location, setLocation] = useState(null);
   const [songData, setSongData] = useState(null);
   const [trailData, setTrailData] = useState(null);
-  const [waypoints, setWaypoints] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
@@ -72,12 +71,38 @@ export default function Home() {
 
       const generatedTrail = await trailRes.json();
       setTrailData(generatedTrail);
-      setWaypoints(generatedTrail.waypoints);
     } catch (err) {
       setError(err.message);
     } finally {
       setLoading(false);
     }
+  };
+
+  // Display highlights information
+  const renderHighlights = () => {
+    if (!trailData?.highlights?.length) return null;
+
+    return (
+      <div className="bg-white p-4 rounded-lg shadow mb-6">
+        <h3 className="font-semibold text-lg mb-4">Trail Highlights</h3>
+        <div className="space-y-4">
+          {trailData.highlights.map((highlight, index) => (
+            <div key={index} className="border-b pb-3 last:border-b-0">
+              <div className="flex items-start">
+                <span className="bg-blue-100 text-blue-800 font-bold px-2 py-1 rounded mr-3">
+                  {String.fromCharCode(65 + index)}
+                </span>
+                <div>
+                  <h4 className="font-medium text-gray-900">{highlight.name}</h4>
+                  <p className="text-sm text-gray-600 mt-1">{highlight.description}</p>
+                  <p className="text-sm text-gray-500 italic mt-1">{highlight.musicalConnection}</p>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
   };
 
   return (
@@ -149,6 +174,9 @@ export default function Home() {
         </div>
       )}
 
+      {/* Render Highlights */}
+      {renderHighlights()}
+
       {/* Song Information */}
       {songData && (
         <div className="bg-white p-4 rounded-lg shadow mb-6">
@@ -168,7 +196,11 @@ export default function Home() {
       {/* Map Section */}
       {location && (
         <div className="w-full max-w-4xl mx-auto">
-          <Map center={location} waypoints={waypoints} />
+          <Map 
+            center={location} 
+            waypoints={trailData?.waypoints || null} 
+            highlights={trailData?.highlights || null}
+          />
         </div>
       )}
     </div>

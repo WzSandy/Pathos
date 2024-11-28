@@ -3,10 +3,12 @@ import React from 'react';
 import { useEffect, useRef } from 'react';
 import { useState } from 'react';
 
-export default function Map({ center, waypoints }) {
+export default function Map({ center, waypoints, highlights }) {
   const mapRef = useRef(null);
   const mapInstanceRef = useRef(null);
   const directionsRendererRef = useRef(null);
+  const infoWindowsRef = useRef([]);
+  const markersRef = useRef([]);
   const [status, setStatus] = useState('initializing');
   const [error, setError] = useState(null);
   const [mapsLoaded, setMapsLoaded] = useState(false);
@@ -59,6 +61,12 @@ export default function Map({ center, waypoints }) {
           mapInstanceRef.current.setCenter(center);
         }
 
+        // Clear existing markers and info windows
+        markersRef.current.forEach(marker => marker.setMap(null));
+        infoWindowsRef.current.forEach(infoWindow => infoWindow.close());
+        markersRef.current = [];
+        infoWindowsRef.current = [];
+
         // Clear any existing markers and add new marker for current location
         const marker = new window.google.maps.Marker({
           position: center,
@@ -76,8 +84,43 @@ export default function Map({ center, waypoints }) {
           const directionsService = new window.google.maps.DirectionsService();
           directionsRendererRef.current = new window.google.maps.DirectionsRenderer({
             map: mapInstanceRef.current,
-            suppressMarkers: false
+            suppressMarkers: true  // Add this line to suppress default markers
           });
+
+          // Add custom markers for each waypoint
+          if (highlights?.length) {
+            highlights.forEach((highlight, index) => {
+              if (!highlight.point) return;
+              
+              const position = { 
+                lat: parseFloat(highlight.point[0]), 
+                lng: parseFloat(highlight.point[1]) 
+              };
+
+              const marker = new window.google.maps.Marker({
+                position,
+                map: mapInstanceRef.current,
+                label: String.fromCharCode(65 + index),
+                title: highlight.name
+              });
+
+              const infoWindow = new window.google.maps.InfoWindow({
+                content: `<div class="p-2 max-w-xs">
+                  <h3 class="font-bold text-lg mb-1">${highlight.name}</h3>
+                  <p class="text-sm mb-2">${highlight.description}</p>
+                  <p class="text-sm italic text-gray-600">${highlight.musicalConnection}</p>
+                </div>`
+              });
+
+              marker.addListener('click', () => {
+                infoWindowsRef.current.forEach(window => window.close());
+                infoWindow.open(mapInstanceRef.current, marker);
+              });
+
+              markersRef.current.push(marker);
+              infoWindowsRef.current.push(infoWindow);
+            });
+          }
 
           const request = {
             origin: { lat: waypoints[0][0], lng: waypoints[0][1] },
@@ -113,11 +156,13 @@ export default function Map({ center, waypoints }) {
 
     // Cleanup function
     return () => {
+      markersRef.current.forEach(marker => marker.setMap(null));
+      infoWindowsRef.current.forEach(infoWindow => infoWindow.close());
       if (directionsRendererRef.current) {
         directionsRendererRef.current.setMap(null);
       }
     };
-  }, [center, waypoints, mapsLoaded]);
+  }, [center, waypoints, highlights, mapsLoaded]);
 
   if (error) {
     return (
