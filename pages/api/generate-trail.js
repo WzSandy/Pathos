@@ -107,16 +107,18 @@ export default async function handler(req, res) {
           translating musical characteristics into physical journeys. Your expertise lies in creating meaningful 
           connections between musical elements and geographical features, ensuring each trail tells a story that 
           resonates with the song's essence.
+          You must ONLY use locations from the provided AVAILABLE NEARBY PLACES list. 
+          Do not invent or generate fictional places.
 
           Key Responsibilities:
           - Create circular routes that start and end at the user's current location
           - Select 3-5 waypoints from available nearby places that reflect the song's themes
           - Ensure a logical walking sequence between points
-          - Match locations to musical and lyrical elements, as well as artist(s) context`
+          - Match actual locations to musical and lyrical elements, as well as artist(s) context`
         },
         {
           role: "user",
-          content: `Create a walking trail using these available locations and characteristics:
+          content: `Create a walking trail using ONLY these available locations and characteristics:
 
             STARTING LOCATION: [${location.lat}, ${location.lng}]
             

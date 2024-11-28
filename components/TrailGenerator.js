@@ -120,6 +120,7 @@ export default function TrailGenerator() {
             <Map 
               center={location} 
               waypoints={trailData?.waypoints}
+              highlights={trailData?.highlights}
             />
           ) : (
             <div className="h-full flex items-center justify-center bg-gray-50 text-gray-500">
