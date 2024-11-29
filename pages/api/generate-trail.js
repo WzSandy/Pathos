@@ -6,7 +6,7 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY
 });
 
-async function getNearbyPlaces(center, radius = 1000) {
+async function getNearbyPlaces(center, radius = 5000) {
   try {
     const response = await axios.get(
       `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${center.lat},${center.lng}&radius=${radius}&type=point_of_interest&key=${process.env.GOOGLE_MAPS_API_KEY}`
