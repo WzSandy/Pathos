@@ -12,16 +12,13 @@ async function getNearbyPlaces(center, radius = 5000) {
       `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${center.lat},${center.lng}&radius=${radius}&type=point_of_interest&key=${process.env.GOOGLE_MAPS_API_KEY}`
     );
     
-    // Get detailed information for each place
     const placesWithDetails = await Promise.all(
       response.data.results.map(async place => {
         try {
-          // Get Google Places details
           const detailsResponse = await axios.get(
             `https://maps.googleapis.com/maps/api/place/details/json?place_id=${place.place_id}&fields=name,formatted_address,rating,reviews,editorial_summary,types,user_ratings_total,price_level,opening_hours,business_status&key=${process.env.GOOGLE_MAPS_API_KEY}`
           );
 
-          // Get Wikipedia information
           const wikiData = await getWikiInformation(place.name, place.vicinity);
           
           return {
@@ -36,7 +33,6 @@ async function getNearbyPlaces(center, radius = 5000) {
           };
         } catch (error) {
           console.error(`Error fetching details for ${place.name}:`, error);
-          // Fallback to basic place information if detailed fetch fails
           return {
             name: place.name,
             location: [place.geometry.location.lat, place.geometry.location.lng],
@@ -68,10 +64,8 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Get nearby places before generating the trail
     const nearbyPlaces = await getNearbyPlaces(location);
     
-    // Use existing defaults
     const moodAnalysis = audioFeatures?.moodAnalysis || {
       primaryMood: 'balanced',
       emotionalIntensity: 5,
@@ -152,6 +146,7 @@ export default async function handler(req, res) {
             1. First determine the recommendedDistance (2-10 km) based on the song's length and intensity
             2. Then choose a recommendedPace (3-6 km/h) based on the song's tempo and mood
             3. The estimatedDuration will be calculated as (recommendedDistance / recommendedPace) * 60 minutes
+
             Respond with JSON:
             {
               "description": "A detailed description connecting musical elements to the trail experience,
@@ -160,18 +155,17 @@ export default async function handler(req, res) {
               and maybe interviews",
               "technicalDetails": {
                 "recommendedDistance": number,  // 2-10 km
-                "estimatedDuration": number,    // 15-120 minutes
+                "estimatedDuration": number,    // 30-120 minutes
                 "recommendedPace": number,      // 3-6 km/h
                 "terrainType": "string",
                 "elevationChange": number      // 0-100 meters
               },
-              "waypoints": "array of [lat, lng] pairs, starting and ending with the user's location",
-              "highlights": [
+              "waypoints": [
                 {
-                  "point": "[lat, lng]",
-                  "name": "string",           // Name of the location
-                  "description": "string",    // Description of the place
-                  "musicalConnection": "string" // How this location connects to the song
+                  "name": "string",
+                  "location": [lat, lng],
+                  "description": "string",
+                  "musicalConnection": "string"
                 }
               ]
             }`
@@ -183,50 +177,42 @@ export default async function handler(req, res) {
 
     const rawResponse = JSON.parse(completion.choices[0].message.content);
     
-    // Ensure the route starts and ends at the user's location
-    let waypoints = rawResponse.waypoints;
-    if (!waypoints || !Array.isArray(waypoints) || waypoints.length < 2) {
-      // Fall back to generated waypoints if needed
-      waypoints = generateWaypoints(location, 
-        parseFloat(rawResponse.technicalDetails?.recommendedDistance || 2));
-    } else {
-      // Force start and end points to be user's location
-      waypoints[0] = [location.lat, location.lng];
-      waypoints[waypoints.length - 1] = [location.lat, location.lng];
-    }
+    // Extract waypoint coordinates and ensure start/end at user location
+    const waypointCoordinates = [
+      [location.lat, location.lng], // Start at user location
+      ...rawResponse.waypoints.map(wp => wp.location),
+      [location.lat, location.lng]  // End at user location
+    ];
 
-    // Add rich descriptions to highlights using wiki data
-    if (rawResponse.highlights) {
-      rawResponse.highlights = rawResponse.highlights.map(highlight => {
-        const matchingPlace = nearbyPlaces.find(place => 
-          Math.abs(place.location[0] - highlight.point[0]) < 0.0001 && 
-          Math.abs(place.location[1] - highlight.point[1]) < 0.0001
-        );
+    // Add Wiki data to waypoints if available
+    const enrichedWaypoints = rawResponse.waypoints.map(waypoint => {
+      const matchingPlace = nearbyPlaces.find(place => 
+        Math.abs(place.location[0] - waypoint.location[0]) < 0.0001 && 
+        Math.abs(place.location[1] - waypoint.location[1]) < 0.0001
+      );
 
-        if (matchingPlace?.wikiData?.summary) {
-          return {
-            ...highlight,
-            description: matchingPlace.wikiData.summary
-          };
-        }
-        return highlight;
-      });
-    }
+      return {
+        ...waypoint,
+        description: matchingPlace?.wikiData?.summary || waypoint.description
+      };
+    });
 
     const formattedResponse = {
       description: rawResponse.description,
-      recommendedDistance: parseFloat(rawResponse.technicalDetails?.recommendedDistance || 2).toFixed(2),
-      estimatedDuration: parseInt(rawResponse.technicalDetails?.estimatedDuration || 30),
-      recommendedPace: parseFloat(rawResponse.technicalDetails?.recommendedPace || 4.0).toFixed(1),
-      technicalDetails: rawResponse.technicalDetails || {
-        recommendedDistance: parseFloat(rawResponse.recommendedDistance || 2),
-        estimatedDuration: parseInt(rawResponse.estimatedDuration || 30),
-        recommendedPace: parseFloat(rawResponse.recommendedPace || 4.0),
-        terrainType: 'mixed terrain',
-        elevationChange: 10
+      technicalDetails: {
+        recommendedDistance: parseFloat(rawResponse.technicalDetails.recommendedDistance).toFixed(2),
+        estimatedDuration: parseInt(rawResponse.technicalDetails.estimatedDuration),
+        recommendedPace: parseFloat(rawResponse.technicalDetails.recommendedPace).toFixed(1),
+        terrainType: rawResponse.technicalDetails.terrainType || 'mixed terrain',
+        elevationChange: rawResponse.technicalDetails.elevationChange || 10
       },
-      waypoints: waypoints,
-      highlights: rawResponse.highlights || []
+      waypoints: waypointCoordinates,
+      highlights: enrichedWaypoints.map(wp => ({
+        point: wp.location,
+        name: wp.name,
+        description: wp.description,
+        musicalConnection: wp.musicalConnection
+      }))
     };
 
     res.status(200).json(formattedResponse);
