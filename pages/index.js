@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Map from '../components/Map';
+import { trailService } from '../services/firebaseTrailService';
 
 export default function Home() {
   const [searchInput, setSearchInput] = useState('');
@@ -8,6 +9,9 @@ export default function Home() {
   const [trailData, setTrailData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [sharedTrails, setSharedTrails] = useState([]);
+  const [hasGeneratedTrail, setHasGeneratedTrail] = useState(false);
+  const [shareStatus, setShareStatus] = useState({ sharing: false, error: null });
 
   // Get user's location when component mounts
   const getUserLocation = () => {
@@ -29,6 +33,17 @@ export default function Home() {
       setError("Geolocation is not supported by your browser");
     }
   };
+
+  // Subscribe to shared trails updates
+  useEffect(() => {
+    if (location) {
+      const unsubscribe = trailService.subscribeToTrails((updatedTrails) => {
+        setSharedTrails(updatedTrails);
+      });
+
+      return () => unsubscribe();
+    }
+  }, [location]);
 
   // Handle song search and trail generation
   const generateTrail = async () => {
@@ -71,10 +86,39 @@ export default function Home() {
 
       const generatedTrail = await trailRes.json();
       setTrailData(generatedTrail);
+      setHasGeneratedTrail(true);
     } catch (err) {
       setError(err.message);
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Share trail to Firebase
+  const shareTrail = async () => {
+    if (!trailData || !songData) {
+      setError("No trail data to share");
+      return;
+    }
+
+    setShareStatus({ sharing: true, error: null });
+    try {
+      await trailService.shareTrail({
+        waypoints: trailData.waypoints,
+        highlights: trailData.highlights,
+        description: trailData.description,
+        recommendedDistance: trailData.recommendedDistance,
+        estimatedDuration: trailData.estimatedDuration,
+        recommendedPace: trailData.recommendedPace,
+        songData: songData,
+        startLocation: location,
+        timestamp: new Date().toISOString()
+      });
+      
+      setShareStatus({ sharing: false, error: null });
+    } catch (error) {
+      console.error('Error sharing trail:', error);
+      setShareStatus({ sharing: false, error: "Failed to share trail" });
     }
   };
 
@@ -153,7 +197,20 @@ export default function Home() {
       {/* Trail Information */}
       {trailData && (
         <div className="bg-white p-4 rounded-lg shadow mb-6">
-          <h3 className="font-semibold text-lg mb-2">Generated Trail</h3>
+          <div className="flex justify-between items-start">
+            <h3 className="font-semibold text-lg mb-2">Generated Trail</h3>
+            <button
+              onClick={shareTrail}
+              disabled={shareStatus.sharing}
+              className={`px-4 py-2 rounded ${
+                shareStatus.sharing 
+                  ? 'bg-gray-400' 
+                  : 'bg-green-500 hover:bg-green-600'
+              } text-white transition-colors`}
+            >
+              {shareStatus.sharing ? 'Sharing...' : 'Share Trail'}
+            </button>
+          </div>
           <div className="space-y-2 text-sm text-gray-600">
             <p>{trailData.description}</p>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-3">
@@ -171,6 +228,12 @@ export default function Home() {
               </div>
             </div>
           </div>
+        </div>
+      )}
+
+      {shareStatus.error && (
+        <div className="text-red-500 p-3 bg-red-50 rounded mb-6">
+          {shareStatus.error}
         </div>
       )}
 
@@ -195,12 +258,61 @@ export default function Home() {
 
       {/* Map Section */}
       {location && (
-        <div className="w-full max-w-4xl mx-auto">
+        <div className="w-full h-[500px] max-w-4xl mx-auto mb-8 border border-gray-300 bg-gray-50">
           <Map 
             center={location} 
             waypoints={trailData?.waypoints || null} 
             highlights={trailData?.highlights || null}
           />
+        </div>
+      )}
+
+      {/* Shared Trails Section */}
+      {hasGeneratedTrail && (
+        <div className="mt-16">
+          <h2 className="text-xl font-bold mb-6">Shared Trails</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {sharedTrails.map((trail) => (
+              <div key={trail.id} className="bg-white rounded-lg shadow-lg overflow-hidden">
+                <div className="h-48 relative">
+                  <img 
+                    src={`https://maps.googleapis.com/maps/api/staticmap?size=400x300&path=color:0x0000ff|weight:5${trail.waypoints.map(p => `|${p[0]},${p[1]}`).join('')}&key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}`}
+                    alt="Trail Map"
+                    className="w-full h-full object-cover"
+                  />
+                  {trail.songData?.track?.album?.images?.[0]?.url && (
+                    <div className="absolute bottom-2 right-2 w-12 h-12 rounded-full overflow-hidden border-2 border-white">
+                      <img
+                        src={trail.songData.track.album.images[0].url}
+                        alt="Album Art"
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                  )}
+                </div>
+                <div className="p-4">
+                  <h3 className="font-semibold mb-1">
+                    {trail.songData?.track?.name || 'Generated Trail'}
+                  </h3>
+                  <p className="text-sm text-gray-600 mb-2">
+                    {trail.songData?.track?.artists?.[0]?.name}
+                  </p>
+                  <div className="flex justify-between text-sm text-gray-500">
+                    <span>{trail.recommendedDistance} km</span>
+                    <span>{trail.estimatedDuration} min</span>
+                  </div>
+                  <div className="mt-3 flex justify-end space-x-2">
+                    <button 
+                      onClick={() => window.open(`https://www.google.com/maps/dir/?api=1&origin=${trail.waypoints[0][0]},${trail.waypoints[0][1]}&destination=${trail.waypoints[trail.waypoints.length-1][0]},${trail.waypoints[trail.waypoints.length-1][1]}&travelmode=walking`, '_blank')}
+                      className="px-3 py-1 text-sm bg-blue-500 text-white rounded hover:bg-blue-600"
+                    >
+                      Open in Maps
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
     </div>

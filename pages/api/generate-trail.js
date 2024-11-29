@@ -154,7 +154,7 @@ export default async function handler(req, res) {
               background. Avoid repetitive and generic wording, reference actual location names and artist quotes
               and maybe interviews",
               "technicalDetails": {
-                "recommendedDistance": number,  // 2-10 km
+                "recommendedDistance": number,  // 2-12 km
                 "estimatedDuration": number,    // 30-120 minutes
                 "recommendedPace": number,      // 3-6 km/h
                 "terrainType": "string",
