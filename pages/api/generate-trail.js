@@ -178,11 +178,13 @@ export default async function handler(req, res) {
     const rawResponse = JSON.parse(completion.choices[0].message.content);
     
     // Extract waypoint coordinates and ensure start/end at user location
-    const waypointCoordinates = [
-      [location.lat, location.lng], // Start at user location
-      ...rawResponse.waypoints.map(wp => wp.location),
-      [location.lat, location.lng]  // End at user location
-    ];
+    const waypointCoordinates = rawResponse.waypoints && rawResponse.waypoints.length > 0 
+      ? [
+          [location.lat, location.lng], // Start at user location
+          ...rawResponse.waypoints.map(wp => wp.location),
+          [location.lat, location.lng]  // End at user location
+        ]
+      : null;
 
     // Add Wiki data to waypoints if available
     const enrichedWaypoints = rawResponse.waypoints.map(waypoint => {
@@ -199,6 +201,9 @@ export default async function handler(req, res) {
 
     const formattedResponse = {
       description: rawResponse.description,
+      recommendedDistance: parseFloat(rawResponse.technicalDetails.recommendedDistance).toFixed(2),
+      estimatedDuration: parseInt(rawResponse.technicalDetails.estimatedDuration),
+      recommendedPace: parseFloat(rawResponse.technicalDetails.recommendedPace).toFixed(1),
       technicalDetails: {
         recommendedDistance: parseFloat(rawResponse.technicalDetails.recommendedDistance).toFixed(2),
         estimatedDuration: parseInt(rawResponse.technicalDetails.estimatedDuration),
