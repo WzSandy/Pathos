@@ -32,7 +32,7 @@ const GeneratedTrailSection = ({ trailData, onShare, shareStatus, sharedTrails, 
                 <button
                 onClick={onShare}
                 disabled={shareStatus.sharing}
-                className="absolute right-0 top-1/2 -translate-y-1/2 font-monument bg-[#4A5D4F] text-[#F5F0E6] px-4 py-2 rounded-full hover:bg-[#3A4A3E] transition-colors"
+                className="absolute right-0 top-1/2 -translate-y-1/2 font-medium font-monument bg-[#4A5D4F] text-[#F5F0E6] px-4 py-2 rounded-full hover:bg-[#3A4A3E] transition-colors"
                 >
     {shareStatus.sharing ? 'Sharing...' : 'Share'}
   </button>
