@@ -6,6 +6,8 @@ import ErrorBoundary from '../components/ErrorBoundary';
 import InitialView from '../components/InitialView';
 import LoadingView from '../components/LoadingView';
 import GeneratedTrailSection from '../components/GeneratedTrailSection';
+import EmbroideryBorder from '../components/EmbroideryBorder';
+
 
 export default function Home() {
   const [searchInput, setSearchInput] = useState('');
@@ -182,12 +184,18 @@ useEffect(() => {
 
   return (
     <div className="min-h-screen relative">
+      {/* Add these decorative gradients */}
+  <div className="absolute top-0 right-0 w-64 h-64 bg-[#E8A08D]/10 rounded-full blur-3xl" />
+  <div className="absolute bottom-0 left-0 w-96 h-96 bg-[#4A5D4F]/5 rounded-full blur-3xl" />
+
       {/* Initial View */}
 {!trailData && !loading && (
   <div className="min-h-screen flex flex-col items-center justify-center p-8 animate-fadeIn">
     <div className="text-center mb-16">
-      <h1 className="text-7xl font-monument font-bold mb-4">PATHOS</h1>
-      <p className="text-xl font-monument">Every song carries the echoes of a place</p>
+      <h1 className="text-7xl text-[#323834] font-monument font-bold mb-4 relative">
+        PATHOS
+        </h1>
+      <p className="text-xl text-[#323834] font-monument">Every song carries the echoes of a place.</p>
     </div>
 
     <div className="w-full max-w-2xl space-y-6">
@@ -204,12 +212,12 @@ useEffect(() => {
             placeholder="(song and artist name)"
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
-            className="w-full font-monument text-center py-3 px-4 rounded-full bg-gray-100"
+            className="w-full font-monument text-center py-3 px-4 rounded-full bg-[#F5F0E6] border-2 border-[#323834]/20 text-[#323834] placeholder-[#323834]/40 focus:outline-none focus:border-[#4A5D4F] transition-all shadow-sm hover:shadow-md"
           />
           <button
             onClick={generateTrail}
             disabled={loading || !searchInput}
-            className="absolute right-2 top-1/2 -translate-y-1/2 font-monument bg-black text-white rounded-full px-6 py-2"
+            className="absolute right-2 top-1/2 -translate-y-1/2 font-medium font-monument bg-[#4A5D4F] text-[#F5F0E6] rounded-full px-6 py-2 hover:bg-[#3A4A3E] transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-md"
           >
             Generate Trail
           </button>
@@ -226,23 +234,35 @@ useEffect(() => {
 )}
 
       {/* Loading View */}
-      {loading && (
-        <div className="fixed inset-0 bg-white flex flex-col items-center justify-center space-y-8 animate-fadeIn">
-          <div className="font-monument text-2xl">
-            Generating Trail<span className="animate-pulse">...</span>
-          </div>
-          
-          {songData && (
-            <div className="bg-gray-100 rounded-2xl p-6 max-w-md w-full mx-auto animate-slideUp">
-              <h3 className="text-center font-bold font-monument mb-4">Selected Song</h3>
-              <div className="space-y-2 text-center font-monument">
-                <p>Track: {songData.track.name}</p>
-                <p>Artist: {songData.track.artists[0].name}</p>
-              </div>
-            </div>
-          )}
+{loading && (
+  <div className="fixed inset-0 p-7 bg-[#F5F0E6]">
+    <EmbroideryBorder>
+      <div className="w-full h-full flex flex-col items-center justify-center space-y-8 animate-fadeIn">
+        {/* Background decorative elements */}
+        <div className="absolute top-0 right-0 w-64 h-64 bg-[#E8A08D]/10 rounded-full blur-3xl" />
+        <div className="absolute bottom-0 left-0 w-96 h-96 bg-[#4A5D4F]/5 rounded-full blur-3xl" />
+
+        <div className="font-monument text-2xl text-[#323834]">
+          Generating Trail<span className="animate-pulse">...</span>
+          <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 w-32 h-0.5 bg-[#4A5D4F]/20 rounded-full" />
         </div>
-      )}
+        
+        {songData && (
+          <div className="bg-[#F5F0E6] border-2 border-[#4A5D4F]/20 rounded-2xl p-6 max-w-md w-full mx-auto animate-slideUp">
+            <div className="relative mb-8">
+              <h3 className="text-center font-monument text-[#4A5D4F] text-xl">Selected Song</h3>
+              <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-24 h-0.5 bg-[#4A5D4F]/30 rounded-full" />
+            </div>
+            <div className="space-y-2 text-center font-monument text-[#4A5D4F] text-lg">
+              <p>Track: {songData.track.name}</p>
+              <p>Artist: {songData.track.artists[0].name}</p>
+            </div>
+          </div>
+        )}
+      </div>
+    </EmbroideryBorder>
+  </div>
+)}
 
       {/* Generated Trail View */}
       {trailData && !loading && (

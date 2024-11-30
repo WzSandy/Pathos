@@ -1,5 +1,6 @@
 import "@/styles/globals.css";
 import { useEffect } from 'react';
+import EmbroideryBorder from '@/components/EmbroideryBorder';
 
 export default function App({ Component, pageProps }) {
   useEffect(() => {
@@ -17,8 +18,10 @@ export default function App({ Component, pageProps }) {
   }, []);
 
   return (
-    <main className="font-monument min-h-screen">
-      <Component {...pageProps} />
-    </main>
+    <div className="fixed inset-0 p-7 bg-[#F5F0E6]">
+      <EmbroideryBorder>
+        <Component {...pageProps} />
+      </EmbroideryBorder>
+    </div>
   );
 }
