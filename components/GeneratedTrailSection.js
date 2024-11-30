@@ -22,7 +22,7 @@ const GeneratedTrailSection = ({ trailData, onShare, shareStatus, sharedTrails, 
     <div className="max-w-4xl mx-auto p-8 space-y-8 animate-fadeIn bg-[#F5F0E6]">
       {/* Header Section */}
       <div className="text-center space-y-6">
-        <h2 className="font-monument font-bold text-2xl text-[#323834]">YOUR SONG TRAIL</h2>
+        <h2 className="font-monument font-bold text-2xl text-[#323834]">MY SONG TRAIL</h2>
         
         {/* Metrics and Share Button Container */}
         <div className="relative">
