@@ -156,11 +156,11 @@ const SharedTrailCard = React.memo(({ trail }) => {
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-lg overflow-hidden">
-      <div className="h-48 relative bg-gray-100">
+    <div className="bg-[#F5F0E6] border-2 border-[#4A5D4F]/20 rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all">
+      <div className="relative w-full aspect-[4/3] bg-[#E5E5E5] overflow-hidden">
         {!mapLoaded && !mapError && (
           <div className="absolute inset-0 flex items-center justify-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#4A5D4F]"></div>
           </div>
         )}
         {mapError && (
@@ -173,39 +173,42 @@ const SharedTrailCard = React.memo(({ trail }) => {
           className={`w-full h-full ${mapLoaded ? 'opacity-100' : 'opacity-0'} transition-opacity duration-300`}
         />
         {trail.songData?.track?.album?.images?.[0]?.url && (
-          <div className="absolute bottom-2 right-2 w-12 h-12 rounded-full overflow-hidden border-2 border-white shadow-lg">
-            <img
-              src={trail.songData.track.album.images[0].url}
-              alt="Album Art"
-              className="w-full h-full object-cover"
-              loading="lazy"
-              onError={(e) => {
-                e.target.onerror = null; // Prevent infinite error loop
-                e.target.style.display = 'none'; // Hide broken image
-              }}
-            />
-          </div>
-        )}
+  <div className="absolute bottom-3 right-3 w-12 h-12 rounded-full overflow-hidden border-2 border-[#F5F0E6] shadow-md">
+    <img
+      src={trail.songData.track.album.images[0].url}
+      alt="Album Art"
+      className="w-full h-full object-cover"
+      loading="lazy"
+      onError={(e) => {
+        e.target.onerror = null;
+        e.target.style.display = 'none';
+      }}
+    />
+  </div>
+)}
       </div>
-      <div className="p-4">
-        <h3 className="font-semibold text-lg mb-1">
-          {trail.songData?.track?.name || 'Generated Trail'}
-        </h3>
-        <p className="text-sm text-gray-600 mb-2">
-          {trail.songData?.track?.artists?.[0]?.name || 'Unknown Artist'}
-        </p>
-        <div className="flex justify-between text-sm text-gray-500">
-          <span>{parseFloat(trail.recommendedDistance).toFixed(1)} km</span>
-          <span>{trail.estimatedDuration} min</span>
-        </div>
-        <div className="mt-3 flex justify-end">
-          <button
-            onClick={openInMaps}
-            className="px-3 py-1 text-sm bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
-          >
-            Open in Maps
-          </button>
-        </div>
+      <div className="p-4 space-y-3">
+      <div className="space-y-1">
+  <h3 className="font-monument font-bold text-[#323834] line-clamp-1">
+    {trail.songData?.track?.name || 'Generated Trail'}
+  </h3>
+  <p className="font-monument text-sm text-[#4A5D4F]">
+    {trail.songData?.track?.artists?.[0]?.name || 'Unknown Artist'}
+  </p>
+</div>
+<div className="flex items-center justify-between pt-2 border-t border-[#4A5D4F]/10">
+  <div className="flex items-center gap-2">
+    <span className="font-monument text-sm text-[#4A5D4F]">
+      {parseFloat(trail.recommendedDistance).toFixed(1)} km
+    </span>
+  </div>
+  <button
+    onClick={openInMaps}
+    className="font-monument text-sm bg-[#4A5D4F] text-[#F5F0E6] px-3 py-1 rounded-full hover:bg-[#3A4A3E] transition-colors"
+  >
+    Open in Maps
+  </button>
+</div>
       </div>
     </div>
   );

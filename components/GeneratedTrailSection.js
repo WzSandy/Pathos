@@ -67,7 +67,7 @@ const GeneratedTrailSection = ({ trailData, onShare, shareStatus, sharedTrails, 
           {trailData.highlights.map((highlight, index) => (
             <div key={index} className="bg-[#F5F0E6] border-2 border-[#4A5D4F]/20 p-6 rounded-2xl">
               <div className="flex gap-4">
-                <div className="flex-shrink-0 w-8 h-8 bg-[#F3D484] rounded-full flex items-center justify-center">
+                <div className="flex-shrink-0 w-8 h-8 bg-[#F2CB68] rounded-full flex items-center justify-center">
                   <span className="font-monument font-bold text-[#4A5D4F]">
                     {String.fromCharCode(65 + index)}
                   </span>
@@ -88,7 +88,7 @@ const GeneratedTrailSection = ({ trailData, onShare, shareStatus, sharedTrails, 
       {/* Shared Trails Section */}
       {hasGeneratedTrail && sharedTrails?.length > 0 && (
         <div className="mt-16 animate-slideUp">
-          <h2 className="text-xl text-center font-monument font-bold mb-6 text-[#1A1A1A]">Shared Trails</h2>
+          <h2 className="text-xl text-center font-monument font-bold mb-6 text-[#323834]">Shared Trails</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {sharedTrails.map((trail) => (
               <SharedTrailCard key={trail.id} trail={trail} />
