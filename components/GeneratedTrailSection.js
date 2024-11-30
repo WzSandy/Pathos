@@ -49,7 +49,7 @@ const GeneratedTrailSection = ({ trailData, onShare, shareStatus, sharedTrails, 
       )}
 
       {/* Map Container */}
-      <div className="w-full aspect-[16/9] bg-[#F5F0E6] rounded-2xl overflow-hidden animate-slideUp shadow-sm">
+      <div className="w-full aspect-[16/9] bg-[#F5F0E6] rounded-2xl overflow-hidden animate-slideUp shadow-sm border-2 border-[#4A5D4F]/20">
         <Map
           center={trailData.startLocation || (trailData.waypoints && trailData.waypoints[0] ? {
             lat: trailData.waypoints[0][0],
