@@ -156,7 +156,7 @@ useEffect(() => {
 
     return (
       <div className="bg-white p-4 rounded-lg shadow mb-6">
-        <h3 className="font-semibold text-lg mb-4">Trail Highlights</h3>
+        <h3 className="font-monument font-semibold text-lg mb-4">Trail Highlights</h3>
         <div className="space-y-4">
           {trailData.highlights.map((highlight, index) => (
             <div key={index} className="border-b pb-3 last:border-b-0">
@@ -165,9 +165,9 @@ useEffect(() => {
                   {String.fromCharCode(65 + index)}
                 </span>
                 <div>
-                  <h4 className="font-medium text-gray-900">{highlight.name}</h4>
-                  <p className="text-sm text-gray-600 mt-1">{highlight.description}</p>
-                  <p className="text-sm text-gray-500 italic mt-1">{highlight.musicalConnection}</p>
+                  <h4 className="font-monument font-medium text-gray-900">{highlight.name}</h4>
+                  <p className="text-sm text-gray-600 mt-1 font-monument">{highlight.description}</p>
+                  <p className="text-sm text-gray-500 italic mt-1 font-monument">{highlight.musicalConnection}</p>
                 </div>
               </div>
             </div>
@@ -178,15 +178,15 @@ useEffect(() => {
   };
 
   return (
-    <div className="min-h-screen p-8">
-      <h1 className="text-3xl font-bold mb-8">Pathos AI Trail Generator</h1>
+    <div className="p-8">
+      <h1 className="text-7xl font-monument font-bold mb-8">PATHOS</h1>
       
       {/* Location and Search Section */}
       <div className="space-y-6 mb-8">
         <div className="flex flex-col gap-4 md:flex-row md:items-center">
           <button 
             onClick={getUserLocation}
-            className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition-colors"
+            className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition-colors font-monument"
             disabled={loading}
           >
             Get My Location
@@ -197,12 +197,12 @@ useEffect(() => {
             placeholder="Enter song name and artist..."
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
-            className="flex-1 p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="flex-1 p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 font-monument"
           />
           
           <button
             onClick={generateTrail}
-            className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 transition-colors"
+            className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 transition-colors font-monument"
             disabled={loading || !location}
           >
             {loading ? 'Generating...' : 'Generate Trail'}
@@ -216,7 +216,7 @@ useEffect(() => {
         )}
 
         {location && (
-          <div className="text-sm text-gray-600">
+          <div className="text-sm text-gray-600 font-monument">
             Located at: {location.lat.toFixed(4)}, {location.lng.toFixed(4)}
           </div>
         )}
@@ -226,7 +226,7 @@ useEffect(() => {
       {trailData && (
         <div className="bg-white p-4 rounded-lg shadow mb-6">
           <div className="flex justify-between items-start">
-            <h3 className="font-semibold text-lg mb-2">Generated Trail</h3>
+            <h3 className="font-monument font-semibold text-lg mb-2">Generated Trail</h3>
             <button
               onClick={shareTrail}
               disabled={shareStatus.sharing}
@@ -234,7 +234,7 @@ useEffect(() => {
                 shareStatus.sharing 
                   ? 'bg-gray-400' 
                   : 'bg-green-500 hover:bg-green-600'
-              } text-white transition-colors`}
+              } text-white transition-colors font-monument`}
             >
               {shareStatus.sharing ? 'Sharing...' : 'Share Trail'}
             </button>
@@ -243,15 +243,15 @@ useEffect(() => {
             <p>{trailData.description}</p>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-3">
               <div>
-                <span className="font-medium">Distance:</span>{' '}
+                <span className="font-monument font-medium">Distance:</span>{' '}
                 {trailData.recommendedDistance} km
               </div>
               <div>
-                <span className="font-medium">Duration:</span>{' '}
+                <span className="font-monument font-medium">Duration:</span>{' '}
                 {trailData.estimatedDuration} minutes
               </div>
               <div>
-                <span className="font-medium">Pace:</span>{' '}
+                <span className="font-monument font-medium">Pace:</span>{' '}
                 {trailData.recommendedPace} km/h
               </div>
             </div>
@@ -260,7 +260,7 @@ useEffect(() => {
       )}
 
       {shareStatus.error && (
-        <div className="text-red-500 p-3 bg-red-50 rounded mb-6">
+        <div className="text-red-500 p-3 bg-red-50 rounded mb-6 font-monument">
           {shareStatus.error}
         </div>
       )}
@@ -271,13 +271,13 @@ useEffect(() => {
       {/* Song Information */}
       {songData && (
         <div className="bg-white p-4 rounded-lg shadow mb-6">
-          <h3 className="font-semibold text-lg mb-2">Selected Song</h3>
-          <div className="space-y-2 text-sm text-gray-600">
+          <h3 className="font-monument font-semibold text-lg mb-2">Selected Song</h3>
+          <div className="space-y-2 text-sm text-gray-600 font-monument">
             <p>
-              <span className="font-medium">Track:</span> {songData.track.name}
+              <span className="font-monument font-medium">Track:</span> {songData.track.name}
             </p>
             <p>
-              <span className="font-medium">Artist:</span>{' '}
+              <span className="font-monument font-medium">Artist:</span>{' '}
               {songData.track.artists[0].name}
             </p>
           </div>
@@ -299,9 +299,9 @@ useEffect(() => {
       {hasGeneratedTrail && (
         <ErrorBoundary fallback={<div>Error loading shared trails</div>}>
         <div className="mt-16">
-          <h2 className="text-xl font-bold mb-6">Shared Trails</h2>
+          <h2 className="text-xl font-monument font-bold mb-6">Shared Trails</h2>
           {loadingSharedTrails ? (
-        <div className="flex items-center justify-center p-8">
+        <div className="flex items-center justify-center p-8 font-monument">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
           <span className="ml-2">Loading shared trails...</span>
         </div>

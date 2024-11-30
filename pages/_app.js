@@ -16,5 +16,9 @@ export default function App({ Component, pageProps }) {
     return () => clearTimeout(timer);
   }, []);
 
-  return <Component {...pageProps} />;
+  return (
+    <main className="font-monument min-h-screen">
+      <Component {...pageProps} />
+    </main>
+  );
 }

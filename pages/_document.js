@@ -9,8 +9,36 @@ export default function Document() {
           async
           defer
         />
+        <link 
+          rel="preload" 
+          href="/fonts/ABCMonumentGrotesk-Regular-Trial.woff2" 
+          as="font" 
+          type="font/woff2" 
+          crossOrigin="anonymous" 
+        />
+        <link 
+          rel="preload" 
+          href="/fonts/ABCMonumentGrotesk-Medium-Trial.woff2" 
+          as="font" 
+          type="font/woff2" 
+          crossOrigin="anonymous" 
+        />
+        <link 
+          rel="preload" 
+          href="/fonts/ABCMonumentGrotesk-Bold-Trial.woff2" 
+          as="font" 
+          type="font/woff2" 
+          crossOrigin="anonymous" 
+        />
+        <link 
+          rel="preload" 
+          href="/fonts/ABCMonumentGrotesk-Light-Trial.woff2" 
+          as="font" 
+          type="font/woff2" 
+          crossOrigin="anonymous" 
+        />
       </Head>
-      <body className="antialiased">
+      <body className="antialiased font-monument">
         <Main />
         <NextScript />
       </body>
