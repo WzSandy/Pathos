@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import Map from '../components/Map';
 import { trailService } from '../services/firebaseTrailService';
+import SharedTrailCard from '../components/SharedTrailCard';
+import ErrorBoundary from '../components/ErrorBoundary';
 
 export default function Home() {
   const [searchInput, setSearchInput] = useState('');
@@ -12,6 +14,8 @@ export default function Home() {
   const [sharedTrails, setSharedTrails] = useState([]);
   const [hasGeneratedTrail, setHasGeneratedTrail] = useState(false);
   const [shareStatus, setShareStatus] = useState({ sharing: false, error: null });
+  // Add this with your other useState declarations at the top
+  const [loadingSharedTrails, setLoadingSharedTrails] = useState(true);
 
   // Get user's location when component mounts
   const getUserLocation = () => {
@@ -34,16 +38,40 @@ export default function Home() {
     }
   };
 
-  // Subscribe to shared trails updates
-  useEffect(() => {
-    if (location) {
-      const unsubscribe = trailService.subscribeToTrails((updatedTrails) => {
-        setSharedTrails(updatedTrails);
-      });
+  // In Home.js, update the useEffect for trail subscription:
+useEffect(() => {
+  let mounted = true;
+  let lastUpdateTime = 0;
+  const UPDATE_THRESHOLD = 2000; // 2 seconds minimum between updates
 
-      return () => unsubscribe();
-    }
-  }, [location]);
+  setLoadingSharedTrails(true); // Set loading true when starting
+  
+  const unsubscribe = trailService.subscribeToTrails((updatedTrails) => {
+    if (!mounted) return;
+
+    const now = Date.now();
+    if (now - lastUpdateTime < UPDATE_THRESHOLD) return;
+    lastUpdateTime = now;
+    
+    setSharedTrails(prevTrails => {
+      // Only update if the trails have actually changed
+      const hasChanges = updatedTrails.length !== prevTrails.length ||
+        updatedTrails.some((trail, i) => trail.id !== prevTrails[i]?.id);
+      
+      if (hasChanges) {
+        return updatedTrails;
+      }
+      return prevTrails;
+    });
+
+    setLoadingSharedTrails(false); // Set loading false after update
+  });
+
+  return () => {
+    mounted = false;
+    unsubscribe();
+  };
+}, []); // Remove any dependencies
 
   // Handle song search and trail generation
   const generateTrail = async () => {
@@ -269,52 +297,24 @@ export default function Home() {
 
       {/* Shared Trails Section */}
       {hasGeneratedTrail && (
+        <ErrorBoundary fallback={<div>Error loading shared trails</div>}>
         <div className="mt-16">
           <h2 className="text-xl font-bold mb-6">Shared Trails</h2>
+          {loadingSharedTrails ? (
+        <div className="flex items-center justify-center p-8">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+          <span className="ml-2">Loading shared trails...</span>
+        </div>
+      ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {sharedTrails.map((trail) => (
-              <div key={trail.id} className="bg-white rounded-lg shadow-lg overflow-hidden">
-                <div className="h-48 relative">
-                  <img 
-                    src={`https://maps.googleapis.com/maps/api/staticmap?size=400x300&path=color:0x0000ff|weight:5${trail.waypoints.map(p => `|${p[0]},${p[1]}`).join('')}&key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}`}
-                    alt="Trail Map"
-                    className="w-full h-full object-cover"
-                  />
-                  {trail.songData?.track?.album?.images?.[0]?.url && (
-                    <div className="absolute bottom-2 right-2 w-12 h-12 rounded-full overflow-hidden border-2 border-white">
-                      <img
-                        src={trail.songData.track.album.images[0].url}
-                        alt="Album Art"
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                  )}
-                </div>
-                <div className="p-4">
-                  <h3 className="font-semibold mb-1">
-                    {trail.songData?.track?.name || 'Generated Trail'}
-                  </h3>
-                  <p className="text-sm text-gray-600 mb-2">
-                    {trail.songData?.track?.artists?.[0]?.name}
-                  </p>
-                  <div className="flex justify-between text-sm text-gray-500">
-                    <span>{trail.recommendedDistance} km</span>
-                    <span>{trail.estimatedDuration} min</span>
-                  </div>
-                  <div className="mt-3 flex justify-end space-x-2">
-                    <button 
-                      onClick={() => window.open(`https://www.google.com/maps/dir/?api=1&origin=${trail.waypoints[0][0]},${trail.waypoints[0][1]}&destination=${trail.waypoints[trail.waypoints.length-1][0]},${trail.waypoints[trail.waypoints.length-1][1]}&travelmode=walking`, '_blank')}
-                      className="px-3 py-1 text-sm bg-blue-500 text-white rounded hover:bg-blue-600"
-                    >
-                      Open in Maps
-                    </button>
-                  </div>
-                </div>
-              </div>
+              <SharedTrailCard key={trail.id} trail={trail} />
             ))}
           </div>
-        </div>
       )}
+        </div>
+      </ErrorBoundary>
+            )}
     </div>
   );
 }

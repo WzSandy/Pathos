@@ -59,7 +59,7 @@ export default function Map({ center, waypoints, highlights }) {
           fullscreenControl: true,
           mapTypeControl: true,
           streetViewControl: true,
-          zoomControl: true
+          zoomControl: true,
         };
 
         await new Promise(resolve => setTimeout(resolve, 0));
@@ -92,42 +92,42 @@ export default function Map({ center, waypoints, highlights }) {
             polylineOptions: {
               strokeColor: '#4285F4',
               strokeWeight: 4,
-              strokeOpacity: 0.8
-            }
+              strokeOpacity: 0.8,
+            },
           });
-
+        
           const request = {
             origin: { lat: waypoints[0][0], lng: waypoints[0][1] },
-            destination: { 
-              lat: waypoints[waypoints.length - 1][0], 
-              lng: waypoints[waypoints.length - 1][1] 
+            destination: {
+              lat: waypoints[waypoints.length - 1][0],
+              lng: waypoints[waypoints.length - 1][1],
             },
-            waypoints: waypoints.slice(1, -1).map(point => ({
+            waypoints: waypoints.slice(1, -1).map((point) => ({
               location: { lat: point[0], lng: point[1] },
-              stopover: true
+              stopover: true,
             })),
             travelMode: 'WALKING',
-            optimizeWaypoints: true
+            optimizeWaypoints: true,
           };
-
+        
           directionsService.route(request, (result, status) => {
             if (status === 'OK' && isMounted) {
               directionsRendererRef.current?.setDirections(result);
-
+        
               // Add highlight markers
               if (highlights?.length) {
                 highlights.forEach((highlight, index) => {
                   if (!highlight.point) return;
-
+        
                   const marker = new window.google.maps.Marker({
-                    position: { 
-                      lat: parseFloat(highlight.point[0]), 
-                      lng: parseFloat(highlight.point[1]) 
+                    position: {
+                      lat: parseFloat(highlight.point[0]),
+                      lng: parseFloat(highlight.point[1]),
                     },
                     map: mapInstanceRef.current,
                     label: {
                       text: String.fromCharCode(65 + index),
-                      color: '#FFFFFF'
+                      color: '#FFFFFF',
                     },
                     title: highlight.name,
                     icon: {
@@ -137,9 +137,9 @@ export default function Map({ center, waypoints, highlights }) {
                       fillOpacity: 1,
                       strokeColor: '#ffffff',
                       strokeWeight: 2,
-                    }
+                    },
                   });
-
+        
                   const infoWindow = new window.google.maps.InfoWindow({
                     content: `
                       <div style="padding: 8px; max-width: 200px;">
@@ -148,14 +148,14 @@ export default function Map({ center, waypoints, highlights }) {
                         <p style="font-size: 14px; font-style: italic; color: #666;">${highlight.musicalConnection}</p>
                       </div>
                     `,
-                    maxWidth: 250
+                    maxWidth: 250,
                   });
-
+        
                   marker.addListener('click', () => {
-                    infoWindowsRef.current.forEach(window => window.close());
+                    infoWindowsRef.current.forEach((window) => window.close());
                     infoWindow.open(mapInstanceRef.current, marker);
                   });
-
+        
                   markersRef.current.push(marker);
                   infoWindowsRef.current.push(infoWindow);
                 });
@@ -189,11 +189,23 @@ export default function Map({ center, waypoints, highlights }) {
 
     return () => {
       isMounted = false;
-      markersRef.current.forEach(marker => marker.setMap(null));
-      infoWindowsRef.current.forEach(window => window.close());
-      if (directionsRendererRef.current) {
-        directionsRendererRef.current.setMap(null);
-      }
+  
+  // Check if arrays exist before calling forEach
+  if (markersRef.current && Array.isArray(markersRef.current)) {
+    markersRef.current.forEach(marker => marker?.setMap?.(null));
+  }
+  
+  if (infoWindowsRef.current && Array.isArray(infoWindowsRef.current)) {
+    infoWindowsRef.current.forEach(window => window?.close?.());
+  }
+  
+  if (directionsRendererRef.current) {
+    directionsRendererRef.current.setMap(null);
+  }
+
+  // Clear the arrays
+  markersRef.current = [];
+  infoWindowsRef.current = [];
     };
   }, [center, waypoints, highlights]);
 

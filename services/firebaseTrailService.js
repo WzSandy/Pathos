@@ -6,39 +6,44 @@ import {
   orderBy, 
   limit, 
   onSnapshot,
-  serverTimestamp,
+  serverTimestamp 
 } from 'firebase/firestore';
 
 const COLLECTION_NAME = 'trails';
 
+const normalizeWaypoint = (wp) => {
+  if (Array.isArray(wp)) {
+    return [parseFloat(wp[0]), parseFloat(wp[1])];
+  }
+  return [parseFloat(wp.lat), parseFloat(wp.lng)];
+};
+
 export const trailService = {
-  // Add a new trail
   async shareTrail(trailData) {
     try {
-      // Convert waypoints array to object structure
-      const formattedWaypoints = trailData.waypoints.map((waypoint, index) => ({
-        index: index,
-        lat: waypoint[0],
-        lng: waypoint[1]
-      }));
+      // Normalize waypoints to consistent format
+      const formattedWaypoints = trailData.waypoints.map((waypoint, index) => {
+        const [lat, lng] = normalizeWaypoint(waypoint);
+        return { index, lat, lng };
+      });
 
-      // Format highlights to avoid nested arrays
+      // Normalize highlights
       const formattedHighlights = trailData.highlights.map((highlight, index) => ({
-        index: index,
+        index,
         name: highlight.name,
         description: highlight.description,
         musicalConnection: highlight.musicalConnection,
         point: {
-          lat: highlight.point[0],
-          lng: highlight.point[1]
+          lat: parseFloat(highlight.point[0]),
+          lng: parseFloat(highlight.point[1])
         }
       }));
 
       const trailToSave = {
         description: trailData.description,
-        recommendedDistance: trailData.recommendedDistance,
-        estimatedDuration: trailData.estimatedDuration,
-        recommendedPace: trailData.recommendedPace,
+        recommendedDistance: parseFloat(trailData.recommendedDistance),
+        estimatedDuration: parseInt(trailData.estimatedDuration),
+        recommendedPace: parseFloat(trailData.recommendedPace),
         songData: {
           track: {
             name: trailData.songData.track.name,
@@ -53,8 +58,8 @@ export const trailService = {
         waypoints: formattedWaypoints,
         highlights: formattedHighlights,
         startLocation: {
-          lat: trailData.startLocation.lat,
-          lng: trailData.startLocation.lng
+          lat: parseFloat(trailData.startLocation.lat),
+          lng: parseFloat(trailData.startLocation.lng)
         },
         createdAt: serverTimestamp()
       };
@@ -67,7 +72,6 @@ export const trailService = {
     }
   },
 
-  // Subscribe to trail updates
   subscribeToTrails(callback, limitCount = 20) {
     const trailsQuery = query(
       collection(db, COLLECTION_NAME),
@@ -76,28 +80,71 @@ export const trailService = {
     );
 
     return onSnapshot(trailsQuery, (snapshot) => {
-      const trails = [];
-      snapshot.forEach((doc) => {
-        // Convert the Firestore data back to the format expected by the app
-        const data = doc.data();
-        const formattedTrail = {
-          id: doc.id,
-          ...data,
-          // Convert waypoints back to array format
-          waypoints: data.waypoints
-            .sort((a, b) => a.index - b.index)
-            .map(wp => [wp.lat, wp.lng]),
-          // Convert highlights back to expected format
-          highlights: data.highlights
-            .sort((a, b) => a.index - b.index)
-            .map(h => ({
-              ...h,
-              point: [h.point.lat, h.point.lng]
-            }))
-        };
-        trails.push(formattedTrail);
-      });
-      callback(trails);
+      try {
+        const trails = snapshot.docs.map(doc => {
+          const data = doc.data();
+          
+          // Ensure waypoints are in correct format
+          const waypoints = data.waypoints
+            ?.sort((a, b) => a.index - b.index)
+            ?.map(wp => [parseFloat(wp.lat), parseFloat(wp.lng)]) || [];
+
+          // Add start/end points if missing
+          if (data.startLocation && waypoints.length > 0) {
+            const startPoint = [
+              parseFloat(data.startLocation.lat),
+              parseFloat(data.startLocation.lng)
+            ];
+            
+            if (JSON.stringify(waypoints[0]) !== JSON.stringify(startPoint)) {
+              waypoints.unshift(startPoint);
+            }
+            if (JSON.stringify(waypoints[waypoints.length - 1]) !== JSON.stringify(startPoint)) {
+              waypoints.push(startPoint);
+            }
+          }
+
+          // Format highlights
+          const highlights = data.highlights
+            ?.sort((a, b) => a.index - b.index)
+            ?.map(h => ({
+              name: h.name,
+              description: h.description,
+              musicalConnection: h.musicalConnection,
+              point: [parseFloat(h.point.lat), parseFloat(h.point.lng)]
+            })) || [];
+
+          return {
+            id: doc.id,
+            description: data.description,
+            recommendedDistance: parseFloat(data.recommendedDistance) || 0,
+            estimatedDuration: parseInt(data.estimatedDuration) || 0,
+            recommendedPace: parseFloat(data.recommendedPace) || 0,
+            waypoints,
+            highlights,
+            songData: data.songData || {},
+            startLocation: data.startLocation && {
+              lat: parseFloat(data.startLocation.lat),
+              lng: parseFloat(data.startLocation.lng)
+            },
+            createdAt: data.createdAt
+          };
+        });
+
+        // Sort by creation date
+        trails.sort((a, b) => {
+          const dateA = a.createdAt?.seconds || 0;
+          const dateB = b.createdAt?.seconds || 0;
+          return dateB - dateA;
+        });
+
+        callback(trails);
+      } catch (error) {
+        console.error('Error processing trails:', error);
+        callback([]);
+      }
+    }, {
+      includeMetadataChanges: false
     });
   }
 };
