@@ -3,6 +3,8 @@ import Map from '../components/Map';
 import { trailService } from '../services/firebaseTrailService';
 import SharedTrailCard from '../components/SharedTrailCard';
 import ErrorBoundary from '../components/ErrorBoundary';
+import InitialView from '../components/InitialView';
+import LoadingView from '../components/LoadingView';
 
 export default function Home() {
   const [searchInput, setSearchInput] = useState('');
@@ -155,166 +157,138 @@ useEffect(() => {
     if (!trailData?.highlights?.length) return null;
 
     return (
-      <div className="bg-white p-4 rounded-lg shadow mb-6">
-        <h3 className="font-monument font-semibold text-lg mb-4">Trail Highlights</h3>
-        <div className="space-y-4">
-          {trailData.highlights.map((highlight, index) => (
-            <div key={index} className="border-b pb-3 last:border-b-0">
-              <div className="flex items-start">
-                <span className="bg-blue-100 text-blue-800 font-bold px-2 py-1 rounded mr-3">
-                  {String.fromCharCode(65 + index)}
-                </span>
-                <div>
-                  <h4 className="font-monument font-medium text-gray-900">{highlight.name}</h4>
-                  <p className="text-sm text-gray-600 mt-1 font-monument">{highlight.description}</p>
-                  <p className="text-sm text-gray-500 italic mt-1 font-monument">{highlight.musicalConnection}</p>
-                </div>
+      <div className="bg-gray-100 rounded-2xl p-6 space-y-6 animate-slideUp">
+        <h3 className="font-monument text-xl">Trail Highlights</h3>
+        {trailData.highlights.map((highlight, index) => (
+          <div key={index} className="bg-white p-6 rounded-xl">
+            <div className="flex gap-4">
+              <span className="font-monument font-bold">
+                {String.fromCharCode(65 + index)}
+              </span>
+              <div>
+                <h4 className="font-monument font-bold">{highlight.name}</h4>
+                <p className="font-monument mt-2">{highlight.description}</p>
+                <p className="font-monument text-gray-500 italic mt-1">
+                  {highlight.musicalConnection}
+                </p>
               </div>
             </div>
-          ))}
-        </div>
+          </div>
+        ))}
       </div>
     );
   };
 
   return (
-    <div className="p-8">
-      <h1 className="text-7xl font-monument font-bold mb-8">PATHOS</h1>
-      
-      {/* Location and Search Section */}
-      <div className="space-y-6 mb-8">
-        <div className="flex flex-col gap-4 md:flex-row md:items-center">
-          <button 
-            onClick={getUserLocation}
-            className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition-colors font-monument"
-            disabled={loading}
-          >
-            Get My Location
-          </button>
-          
-          <input
-            type="text"
-            placeholder="Enter song name and artist..."
-            value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)}
-            className="flex-1 p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 font-monument"
-          />
-          
-          <button
-            onClick={generateTrail}
-            className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 transition-colors font-monument"
-            disabled={loading || !location}
-          >
-            {loading ? 'Generating...' : 'Generate Trail'}
-          </button>
-        </div>
-
-        {error && (
-          <div className="text-red-500 p-3 bg-red-50 rounded">
-            {error}
+    <div className="min-h-screen relative">
+      {/* Initial View */}
+      {!trailData && !loading && (
+        <div className="min-h-screen flex flex-col items-center justify-center p-8 animate-fadeIn">
+          <div className="text-center mb-16">
+            <h1 className="text-7xl font-monument font-bold mb-4">PATHOS</h1>
+            <p className="text-xl font-monument">Every song carries the echoes of a place</p>
           </div>
-        )}
 
-        {location && (
-          <div className="text-sm text-gray-600 font-monument">
-            Located at: {location.lat.toFixed(4)}, {location.lng.toFixed(4)}
-          </div>
-        )}
-      </div>
-
-      {/* Trail Information */}
-      {trailData && (
-        <div className="bg-white p-4 rounded-lg shadow mb-6">
-          <div className="flex justify-between items-start">
-            <h3 className="font-monument font-semibold text-lg mb-2">Generated Trail</h3>
-            <button
-              onClick={shareTrail}
-              disabled={shareStatus.sharing}
-              className={`px-4 py-2 rounded ${
-                shareStatus.sharing 
-                  ? 'bg-gray-400' 
-                  : 'bg-green-500 hover:bg-green-600'
-              } text-white transition-colors font-monument`}
+          <div className="w-full max-w-2xl space-y-6">
+            <button 
+              onClick={getUserLocation}
+              className="flex items-center gap-2 font-monument bg-gray-100 rounded-full px-6 py-3 hover:bg-gray-200 transition-colors mx-auto"
+              disabled={loading}
             >
-              {shareStatus.sharing ? 'Sharing...' : 'Share Trail'}
+              <span className="w-8 h-8 bg-gray-300 rounded-full"></span>
+              Get My Location
             </button>
+
+            {location && (
+              <div className="relative animate-slideUp">
+                <input
+                  type="text"
+                  placeholder="(song and artist name)"
+                  value={searchInput}
+                  onChange={(e) => setSearchInput(e.target.value)}
+                  className="w-full font-monument text-center py-3 px-4 rounded-full bg-gray-100"
+                />
+                <button
+                  onClick={generateTrail}
+                  disabled={loading || !searchInput}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 font-monument bg-black text-white rounded-full px-6 py-2"
+                >
+                  Generate Trail
+                </button>
+              </div>
+            )}
+
+            {error && (
+              <div className="text-red-500 text-center font-monument animate-fadeIn">
+                {error}
+              </div>
+            )}
           </div>
-          <div className="space-y-2 text-sm text-gray-600">
-            <p>{trailData.description}</p>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-3">
-              <div>
-                <span className="font-monument font-medium">Distance:</span>{' '}
-                {trailData.recommendedDistance} km
-              </div>
-              <div>
-                <span className="font-monument font-medium">Duration:</span>{' '}
-                {trailData.estimatedDuration} minutes
-              </div>
-              <div>
-                <span className="font-monument font-medium">Pace:</span>{' '}
-                {trailData.recommendedPace} km/h
+        </div>
+      )}
+
+      {/* Loading View */}
+      {loading && (
+        <div className="fixed inset-0 bg-white flex flex-col items-center justify-center space-y-8 animate-fadeIn">
+          <div className="font-monument text-2xl">
+            Generating Trail<span className="animate-pulse">...</span>
+          </div>
+          
+          {songData && (
+            <div className="bg-gray-100 rounded-2xl p-6 max-w-md w-full mx-auto animate-slideUp">
+              <h3 className="text-center font-monument mb-4">Selected Song</h3>
+              <div className="space-y-2 text-center font-monument">
+                <p>Track: {songData.track.name}</p>
+                <p>Artist: {songData.track.artists[0].name}</p>
               </div>
             </div>
+          )}
+        </div>
+      )}
+
+      {/* Generated Trail View */}
+      {trailData && !loading && (
+        <div className="max-w-4xl mx-auto p-8 space-y-8 animate-fadeIn">
+          <div className="text-center space-y-4">
+            <h2 className="font-monument text-2xl">Generated Trail</h2>
+            <div className="flex justify-between items-center">
+              <p className="font-monument text-base">
+                Distance: {trailData.recommendedDistance} km | 
+                Duration: {trailData.estimatedDuration} minutes | 
+                Pace: {trailData.recommendedPace} km/h
+              </p>
+              <button
+                onClick={shareTrail}
+                disabled={shareStatus.sharing}
+                className="font-monument bg-black text-white px-4 py-2 rounded-full"
+              >
+                {shareStatus.sharing ? 'Sharing...' : 'Share'}
+              </button>
+            </div>
           </div>
-        </div>
-      )}
 
-      {shareStatus.error && (
-        <div className="text-red-500 p-3 bg-red-50 rounded mb-6 font-monument">
-          {shareStatus.error}
-        </div>
-      )}
-
-      {/* Render Highlights */}
-      {renderHighlights()}
-
-      {/* Song Information */}
-      {songData && (
-        <div className="bg-white p-4 rounded-lg shadow mb-6">
-          <h3 className="font-monument font-semibold text-lg mb-2">Selected Song</h3>
-          <div className="space-y-2 text-sm text-gray-600 font-monument">
-            <p>
-              <span className="font-monument font-medium">Track:</span> {songData.track.name}
-            </p>
-            <p>
-              <span className="font-monument font-medium">Artist:</span>{' '}
-              {songData.track.artists[0].name}
-            </p>
+          <div className="w-full aspect-[16/9] bg-gray-100 rounded-2xl overflow-hidden animate-slideUp">
+            <Map 
+              center={location} 
+              waypoints={trailData.waypoints} 
+              highlights={trailData.highlights} 
+            />
           </div>
-        </div>
-      )}
 
-      {/* Map Section */}
-      {location && (
-        <div className="w-full h-[500px] max-w-4xl mx-auto mb-8 border border-gray-300 bg-gray-50">
-          <Map 
-            center={location} 
-            waypoints={trailData?.waypoints || null} 
-            highlights={trailData?.highlights || null}
-          />
-        </div>
-      )}
+          {renderHighlights()}
 
-      {/* Shared Trails Section */}
-      {hasGeneratedTrail && (
-        <ErrorBoundary fallback={<div>Error loading shared trails</div>}>
-        <div className="mt-16">
-          <h2 className="text-xl font-monument font-bold mb-6">Shared Trails</h2>
-          {loadingSharedTrails ? (
-        <div className="flex items-center justify-center p-8 font-monument">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
-          <span className="ml-2">Loading shared trails...</span>
+          {hasGeneratedTrail && (
+            <div className="mt-16 animate-slideUp">
+              <h2 className="text-xl font-monument font-bold mb-6">Shared Trails</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                {sharedTrails.map((trail) => (
+                  <SharedTrailCard key={trail.id} trail={trail} />
+                ))}
+              </div>
+            </div>
+          )}
         </div>
-      ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {sharedTrails.map((trail) => (
-              <SharedTrailCard key={trail.id} trail={trail} />
-            ))}
-          </div>
       )}
-        </div>
-      </ErrorBoundary>
-            )}
     </div>
   );
 }
