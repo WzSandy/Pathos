@@ -34,7 +34,7 @@ export default function Map({ center, waypoints, highlights }) {
     let isMounted = true;
 
     const initializeMap = async () => {
-      if (!mapRef.current || !window.google?.maps) {
+      if (!mapRef.current || !window.google?.maps || !center) {
         return;
       }
 
@@ -53,7 +53,10 @@ export default function Map({ center, waypoints, highlights }) {
 
         // Create new map instance
         const mapOptions = {
-          center: { lat: center.lat, lng: center.lng },
+          center: { 
+            lat: typeof center.lat === 'number' ? center.lat : parseFloat(center.lat), 
+            lng: typeof center.lng === 'number' ? center.lng : parseFloat(center.lng)
+          },
           zoom: 14,
           mapTypeId: 'roadmap',
           fullscreenControl: true,

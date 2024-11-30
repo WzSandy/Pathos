@@ -5,6 +5,7 @@ import SharedTrailCard from '../components/SharedTrailCard';
 import ErrorBoundary from '../components/ErrorBoundary';
 import InitialView from '../components/InitialView';
 import LoadingView from '../components/LoadingView';
+import GeneratedTrailSection from '../components/GeneratedTrailSection';
 
 export default function Home() {
   const [searchInput, setSearchInput] = useState('');
@@ -182,50 +183,47 @@ useEffect(() => {
   return (
     <div className="min-h-screen relative">
       {/* Initial View */}
-      {!trailData && !loading && (
-        <div className="min-h-screen flex flex-col items-center justify-center p-8 animate-fadeIn">
-          <div className="text-center mb-16">
-            <h1 className="text-7xl font-monument font-bold mb-4">PATHOS</h1>
-            <p className="text-xl font-monument">Every song carries the echoes of a place</p>
-          </div>
+{!trailData && !loading && (
+  <div className="min-h-screen flex flex-col items-center justify-center p-8 animate-fadeIn">
+    <div className="text-center mb-16">
+      <h1 className="text-7xl font-monument font-bold mb-4">PATHOS</h1>
+      <p className="text-xl font-monument">Every song carries the echoes of a place</p>
+    </div>
 
-          <div className="w-full max-w-2xl space-y-6">
-            <button 
-              onClick={getUserLocation}
-              className="flex items-center gap-2 font-monument bg-gray-100 rounded-full px-6 py-3 hover:bg-gray-200 transition-colors mx-auto"
-              disabled={loading}
-            >
-              <span className="w-8 h-8 bg-gray-300 rounded-full"></span>
-              Get My Location
-            </button>
+    <div className="w-full max-w-2xl space-y-6">
+      <InitialView 
+        onLocationSet={setLocation}
+        loading={loading}
+        error={error}
+      />
 
-            {location && (
-              <div className="relative animate-slideUp">
-                <input
-                  type="text"
-                  placeholder="(song and artist name)"
-                  value={searchInput}
-                  onChange={(e) => setSearchInput(e.target.value)}
-                  className="w-full font-monument text-center py-3 px-4 rounded-full bg-gray-100"
-                />
-                <button
-                  onClick={generateTrail}
-                  disabled={loading || !searchInput}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 font-monument bg-black text-white rounded-full px-6 py-2"
-                >
-                  Generate Trail
-                </button>
-              </div>
-            )}
-
-            {error && (
-              <div className="text-red-500 text-center font-monument animate-fadeIn">
-                {error}
-              </div>
-            )}
-          </div>
+      {location && (
+        <div className="relative animate-slideUp">
+          <input
+            type="text"
+            placeholder="(song and artist name)"
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            className="w-full font-monument text-center py-3 px-4 rounded-full bg-gray-100"
+          />
+          <button
+            onClick={generateTrail}
+            disabled={loading || !searchInput}
+            className="absolute right-2 top-1/2 -translate-y-1/2 font-monument bg-black text-white rounded-full px-6 py-2"
+          >
+            Generate Trail
+          </button>
         </div>
       )}
+
+      {error && (
+        <div className="text-red-500 text-center font-monument animate-fadeIn">
+          {error}
+        </div>
+      )}
+    </div>
+  </div>
+)}
 
       {/* Loading View */}
       {loading && (
@@ -236,7 +234,7 @@ useEffect(() => {
           
           {songData && (
             <div className="bg-gray-100 rounded-2xl p-6 max-w-md w-full mx-auto animate-slideUp">
-              <h3 className="text-center font-monument mb-4">Selected Song</h3>
+              <h3 className="text-center font-bold font-monument mb-4">Selected Song</h3>
               <div className="space-y-2 text-center font-monument">
                 <p>Track: {songData.track.name}</p>
                 <p>Artist: {songData.track.artists[0].name}</p>
@@ -248,47 +246,14 @@ useEffect(() => {
 
       {/* Generated Trail View */}
       {trailData && !loading && (
-        <div className="max-w-4xl mx-auto p-8 space-y-8 animate-fadeIn">
-          <div className="text-center space-y-4">
-            <h2 className="font-monument text-2xl">Generated Trail</h2>
-            <div className="flex justify-between items-center">
-              <p className="font-monument text-base">
-                Distance: {trailData.recommendedDistance} km | 
-                Duration: {trailData.estimatedDuration} minutes | 
-                Pace: {trailData.recommendedPace} km/h
-              </p>
-              <button
-                onClick={shareTrail}
-                disabled={shareStatus.sharing}
-                className="font-monument bg-black text-white px-4 py-2 rounded-full"
-              >
-                {shareStatus.sharing ? 'Sharing...' : 'Share'}
-              </button>
-            </div>
-          </div>
-
-          <div className="w-full aspect-[16/9] bg-gray-100 rounded-2xl overflow-hidden animate-slideUp">
-            <Map 
-              center={location} 
-              waypoints={trailData.waypoints} 
-              highlights={trailData.highlights} 
-            />
-          </div>
-
-          {renderHighlights()}
-
-          {hasGeneratedTrail && (
-            <div className="mt-16 animate-slideUp">
-              <h2 className="text-xl font-monument font-bold mb-6">Shared Trails</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                {sharedTrails.map((trail) => (
-                  <SharedTrailCard key={trail.id} trail={trail} />
-                ))}
-              </div>
-            </div>
-          )}
+        <GeneratedTrailSection 
+        trailData={trailData}
+        onShare={shareTrail}
+        shareStatus={shareStatus}
+        sharedTrails={sharedTrails}
+        hasGeneratedTrail={hasGeneratedTrail}
+        />
+        )}
         </div>
-      )}
-    </div>
-  );
+);
 }
