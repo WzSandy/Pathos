@@ -33,9 +33,4 @@ export default function LoadingView({ songData }) {
       )}
     </div>
   );
-  return (
-    <EmbroideryBorder>
-      {loadingContent}
-    </EmbroideryBorder>
-  );
 }

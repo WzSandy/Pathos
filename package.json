@@ -23,10 +23,14 @@
     "wikijs": "^6.4.1"
   },
   "devDependencies": {
+    "@svgr/webpack": "^8.0.1",
     "autoprefixer": "^10.4.17",
     "eslint": "^8.57.0",
     "eslint-config-next": "14.1.0",
     "postcss": "^8.4.35",
     "tailwindcss": "^3.4.1"
+  },
+  "engines": {
+    "node": ">=18.17.0"
   }
 }
